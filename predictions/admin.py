@@ -19,15 +19,28 @@ class EventAdmin(admin.ModelAdmin):
 @admin.register(Fight)
 class FightAdmin(admin.ModelAdmin):
     list_display = ("event", "fight_order", "fighter_a", "fighter_b", "weight_class")
-    search_fields = ("fighter_a__first_name", "fighter_a__last_name", "fighter_b__first_name", "fighter_b__last_name")
+    search_fields = (
+        "fighter_a__first_name",
+        "fighter_a__last_name",
+        "fighter_b__first_name",
+        "fighter_b__last_name",
+    )
     list_filter = ("event", "weight_class")
-
+    autocomplete_fields = ("event", "fighter_a", "fighter_b")
 
 @admin.register(Prediction)
 class PredictionAdmin(admin.ModelAdmin):
     list_display = ("fight", "predicted_winner", "method", "confidence", "updated_at")
-    search_fields = ("fight__fighter_a__last_name", "fight__fighter_b__last_name", "predicted_winner__last_name")
+    search_fields = (
+        "fight__fighter_a__first_name",
+        "fight__fighter_a__last_name",
+        "fight__fighter_b__first_name",
+        "fight__fighter_b__last_name",
+        "predicted_winner__first_name",
+        "predicted_winner__last_name",
+    )
     list_filter = ("method", "confidence")
+    autocomplete_fields = ("fight", "predicted_winner")
 
 
 @admin.register(Result)
