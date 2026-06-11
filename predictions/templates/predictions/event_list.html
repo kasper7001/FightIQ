@@ -1,0 +1,33 @@
+{% extends "predictions/base.html" %}
+
+{% block content %}
+    <h2>Events</h2>
+    <p class="muted">Upcoming and completed MMA events stored in FightIQ.</p>
+
+    {% for event in events %}
+        <div class="card">
+            <h3>{{ event.promotion }}: {{ event.name }}</h3>
+
+            <p>
+                <span class="badge">{{ event.get_status_display }}</span>
+                <span class="badge">{{ event.date }}</span>
+                {% if event.location %}
+                    <span class="badge">{{ event.location }}</span>
+                {% endif %}
+            </p>
+
+            <p class="muted">
+                {{ event.fights.count }} fight{{ event.fights.count|pluralize }} added
+            </p>
+
+            <a class="button" href="{% url 'predictions:event_detail' event.id %}">
+                View Fight Card
+            </a>
+        </div>
+    {% empty %}
+        <div class="card">
+            <p>No events added yet. Add one through the admin panel.</p>
+            <a class="button" href="/admin/predictions/event/add/">Add Event</a>
+        </div>
+    {% endfor %}
+{% endblock %}
