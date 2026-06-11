@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Fighter, Event, Fight, Prediction, Result
+from .models import Fighter, Event, Fight, Prediction, Result, HistoricalPick
 
 
 @admin.register(Fighter)
@@ -35,3 +35,20 @@ class ResultAdmin(admin.ModelAdmin):
     list_display = ("fight", "winner", "method", "round_finished")
     search_fields = ("fight__fighter_a__last_name", "fight__fighter_b__last_name", "winner__last_name")
     list_filter = ("method",)
+
+@admin.register(HistoricalPick)
+class HistoricalPickAdmin(admin.ModelAdmin):
+    list_display = (
+        "date",
+        "event_name",
+        "fight_name",
+        "pick_name",
+        "bet_type",
+        "stake",
+        "odds",
+        "outcome",
+        "profit_loss",
+    )
+    search_fields = ("event_name", "fight_name", "pick_name", "bet_type")
+    list_filter = ("outcome", "bet_type", "country", "date")
+    readonly_fields = ("source_hash", "imported_at")

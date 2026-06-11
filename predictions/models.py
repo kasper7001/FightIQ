@@ -168,3 +168,58 @@ class Result(models.Model):
 
     def __str__(self):
         return f"{self.fight} result"
+
+class HistoricalPick(models.Model):
+    OUTCOME_CHOICES = [
+        ("W", "Win"),
+        ("L", "Loss"),
+        ("R", "Refund/Void"),
+        ("P", "Pending"),
+        ("U", "Unknown"),
+    ]
+
+    date = models.DateField(null=True, blank=True)
+    time = models.TimeField(null=True, blank=True)
+
+    country = models.CharField(max_length=100, blank=True)
+    event_name = models.CharField(max_length=200)
+    fight_name = models.CharField(max_length=200)
+    pick_name = models.CharField(max_length=200)
+    bet_type = models.CharField(max_length=100, blank=True)
+
+    stake = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    odds = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+
+    outcome = models.CharField(max_length=1, choices=OUTCOME_CHOICES, default="U")
+
+    profit_loss = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True)
+    sheet_total_profit_loss = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True)
+
+    source_row = models.PositiveIntegerField(null=True, blank=True)
+    source_hash = models.CharField(max_length=64, unique=True)
+
+    imported_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date", "-id"]
+        indexes = [
+            models.Index(fields=["event_name"]),
+            models.Index(fields=["pick_name"]),
+            models.Index(fields=["outcome"]),
+            models.Index(fields=["date"]),
+        ]
+
+    def is_win(self):
+        return self.outcome == "W"
+
+    def is_loss(self):
+        return self.outcome == "L"
+
+    def is_refund(self):
+        return self.outcome == "R"
+
+    def is_settled(self):
+        return self.outcome in ["W", "L", "R"]
+
+    def __str__(self):
+        return f"{self.event_name} - {self.pick_name} ({self.get_outcome_display()})"
