@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Fighter, Event, Fight, Prediction, Result, HistoricalPick
+from .forms import PredictionAdminForm
 
 
 @admin.register(Fighter)
@@ -30,6 +31,8 @@ class FightAdmin(admin.ModelAdmin):
 
 @admin.register(Prediction)
 class PredictionAdmin(admin.ModelAdmin):
+    form = PredictionAdminForm
+
     list_display = ("fight", "predicted_winner", "method", "confidence", "updated_at")
     search_fields = (
         "fight__fighter_a__first_name",
@@ -40,7 +43,11 @@ class PredictionAdmin(admin.ModelAdmin):
         "predicted_winner__last_name",
     )
     list_filter = ("method", "confidence")
-    autocomplete_fields = ("fight", "predicted_winner")
+
+    autocomplete_fields = ("fight",)
+
+    class Media:
+        js = ("predictions/js/prediction_admin.js",)
 
     def save_model(self, request, obj, form, change):
         if not obj.created_by:

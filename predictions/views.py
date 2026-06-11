@@ -4,8 +4,9 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum, Avg, Q
 from django.db.models.functions import TruncMonth
 from django.shortcuts import get_object_or_404, render
+from django.http import JsonResponse
 
-from .models import Event, HistoricalPick
+from .models import Event, Fight, HistoricalPick
 
 
 @login_required
@@ -205,3 +206,23 @@ def build_odds_range_summary(picks):
         })
 
     return summary
+
+@login_required
+def fight_fighters_api(request, fight_id):
+    fight = get_object_or_404(
+        Fight.objects.select_related("fighter_a", "fighter_b"),
+        id=fight_id,
+    )
+
+    fighters = [
+        {
+            "id": fight.fighter_a.id,
+            "name": str(fight.fighter_a),
+        },
+        {
+            "id": fight.fighter_b.id,
+            "name": str(fight.fighter_b),
+        },
+    ]
+
+    return JsonResponse({"fighters": fighters})
