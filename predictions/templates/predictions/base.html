@@ -90,6 +90,26 @@
             padding: 12px;
             margin-top: 12px;
         }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+        }
+
+        th {
+            background: #f9fafb;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
     </style>
 </head>
 <body>
@@ -97,6 +117,7 @@
         <h1>FightIQ</h1>
         <nav>
             <a href="{% url 'predictions:event_list' %}">Events</a>
+            <a href="{% url 'predictions:analytics_dashboard' %}">Analytics</a>
             <a href="/admin/">Admin</a>
         </nav>
     </header>

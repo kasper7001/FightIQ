@@ -1,0 +1,193 @@
+{% extends "predictions/base.html" %}
+
+{% block content %}
+    <h2>Historical Pick Analytics</h2>
+    <p class="muted">
+        Breakdown of your imported MMA prediction and betting history.
+    </p>
+
+    <div class="card">
+        <h3>Overall Record</h3>
+
+        <p>
+            <span class="badge">Total picks: {{ total_picks }}</span>
+            <span class="badge">Settled: {{ settled_count }}</span>
+            <span class="badge">Wins: {{ wins }}</span>
+            <span class="badge">Losses: {{ losses }}</span>
+            <span class="badge">Refunds/Void: {{ refunds }}</span>
+            <span class="badge">Pending: {{ pending }}</span>
+        </p>
+
+        <p>
+            <strong>Win rate:</strong> {{ win_rate }}%
+            <br>
+            <strong>Total P/L:</strong> {{ total_profit_loss }}
+            <br>
+            <strong>Average odds:</strong>
+            {% if average_odds %}
+                {{ average_odds|floatformat:2 }}
+            {% else %}
+                N/A
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="card">
+        <h3>Performance by Bet Type</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Bet Type</th>
+                    <th>Total</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Refunds</th>
+                    <th>Win Rate</th>
+                    <th>P/L</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in bet_type_summary %}
+                    <tr>
+                        <td>{{ row.bet_type }}</td>
+                        <td>{{ row.total }}</td>
+                        <td>{{ row.wins }}</td>
+                        <td>{{ row.losses }}</td>
+                        <td>{{ row.refunds }}</td>
+                        <td>{{ row.win_rate }}%</td>
+                        <td>{{ row.profit }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7">No historical picks imported yet.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Performance by Odds Range</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Odds Range</th>
+                    <th>Total</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Win Rate</th>
+                    <th>P/L</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in odds_ranges %}
+                    <tr>
+                        <td>{{ row.label }}</td>
+                        <td>{{ row.total }}</td>
+                        <td>{{ row.wins }}</td>
+                        <td>{{ row.losses }}</td>
+                        <td>{{ row.win_rate }}%</td>
+                        <td>{{ row.profit }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Best Events by P/L</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Total Picks</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>P/L</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in top_events %}
+                    <tr>
+                        <td>{{ event.event_name }}</td>
+                        <td>{{ event.total }}</td>
+                        <td>{{ event.wins }}</td>
+                        <td>{{ event.losses }}</td>
+                        <td>{{ event.profit|default:"0.00" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">No event data available.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Worst Events by P/L</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Total Picks</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>P/L</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in worst_events %}
+                    <tr>
+                        <td>{{ event.event_name }}</td>
+                        <td>{{ event.total }}</td>
+                        <td>{{ event.wins }}</td>
+                        <td>{{ event.losses }}</td>
+                        <td>{{ event.profit|default:"0.00" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">No event data available.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Recent Monthly Breakdown</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Total Picks</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Refunds</th>
+                    <th>P/L</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for month in monthly_summary %}
+                    <tr>
+                        <td>{{ month.month|date:"F Y" }}</td>
+                        <td>{{ month.total }}</td>
+                        <td>{{ month.wins }}</td>
+                        <td>{{ month.losses }}</td>
+                        <td>{{ month.refunds }}</td>
+                        <td>{{ month.profit|default:"0.00" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6">No dated picks available.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
