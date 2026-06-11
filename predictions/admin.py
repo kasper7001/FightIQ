@@ -42,6 +42,11 @@ class PredictionAdmin(admin.ModelAdmin):
     list_filter = ("method", "confidence")
     autocomplete_fields = ("fight", "predicted_winner")
 
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
 
 @admin.register(Result)
 class ResultAdmin(admin.ModelAdmin):

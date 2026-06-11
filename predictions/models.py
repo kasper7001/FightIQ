@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
@@ -87,6 +88,10 @@ class Fight(models.Model):
     class Meta:
         ordering = ["event", "fight_order"]
 
+    def clean(self):
+        if self.fighter_a_id and self.fighter_b_id and self.fighter_a_id == self.fighter_b_id:
+            raise ValidationError("A fighter cannot fight themselves.")
+
     def __str__(self):
         return f"{self.fighter_a} vs {self.fighter_b}"
 
@@ -131,6 +136,20 @@ class Prediction(models.Model):
     def confidence_display(self):
         return dict(self.CONFIDENCE_CHOICES).get(self.confidence, "Unknown")
 
+    def clean(self):
+        if not self.fight_id or not self.predicted_winner_id:
+            return
+
+        valid_fighter_ids = [
+            self.fight.fighter_a_id,
+            self.fight.fighter_b_id,
+        ]
+
+        if self.predicted_winner_id not in valid_fighter_ids:
+            raise ValidationError(
+                "Predicted winner must be one of the two fighters in this fight."
+            )
+
     def __str__(self):
         return f"{self.predicted_winner} by {self.get_method_display()}"
 
@@ -155,6 +174,20 @@ class Result(models.Model):
     )
 
     notes = models.TextField(blank=True)
+
+    def clean(self):
+        if not self.fight_id or not self.winner_id:
+            return
+
+        valid_fighter_ids = [
+            self.fight.fighter_a_id,
+            self.fight.fighter_b_id,
+        ]
+
+        if self.winner_id not in valid_fighter_ids:
+            raise ValidationError(
+                "Result winner must be one of the two fighters in this fight."
+            )
 
     def prediction_correct(self):
         if not hasattr(self.fight, "prediction"):
