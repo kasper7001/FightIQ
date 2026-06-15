@@ -41,12 +41,12 @@
             <span class="badge">Current wins: {{ current_wins }}</span>
             <span class="badge">Current losses: {{ current_losses }}</span>
             <span class="badge">Current win rate: {{ current_win_rate }}%</span>
-            <span class="badge">Exact method correct: {{ method_correct }}</span>
-            <span class="badge">Exact method rate: {{ method_accuracy }}%</span>
+            <span class="badge">Method correct: {{ method_correct }}</span>
+            <span class="badge">Method accuracy on winning picks: {{ method_accuracy }}%</span>
         </p>
 
         <p class="muted">
-            Exact method means both the winner and method were correct.
+            Units and P/L are based only on picking the fight winner. Method accuracy is tracked separately for prediction quality.
         </p>
     </div>
 
@@ -98,12 +98,12 @@
     </div>
 
     <div class="card">
-        <h3>Performance by Bet Type / Method</h3>
+        <h3>Performance by Pick Type</h3>
 
         <table>
             <thead>
                 <tr>
-                    <th>Type</th>
+                    <th>Pick Type</th>
                     <th>Total</th>
                     <th>Wins</th>
                     <th>Losses</th>

@@ -104,7 +104,7 @@ def build_current_prediction_rows():
             "event_name": f"{prediction.fight.event.promotion}: {prediction.fight.event.name}",
             "fight_name": str(prediction.fight),
             "pick_name": str(prediction.predicted_winner),
-            "bet_type": prediction.get_method_display(),
+            "bet_type": "Winner Pick",
             "stake": prediction.stake_amount(),
             "odds": prediction.predicted_odds(),
             "outcome": prediction.result_status(),
@@ -156,8 +156,8 @@ def build_analytics_context(rows, current_rows):
     current_wins = len([row for row in current_rows if row["outcome"] == "W"])
     current_losses = len([row for row in current_rows if row["outcome"] == "L"])
     method_correct = len([
-        row for row in current_win_loss_rows
-        if row["method_correct"] is True
+        row for row in current_rows
+        if row["outcome"] == "W" and row["method_correct"] is True
     ])
 
     current_win_loss_total = current_wins + current_losses
@@ -168,8 +168,8 @@ def build_analytics_context(rows, current_rows):
     )
 
     method_accuracy = (
-        round((method_correct / current_win_loss_total) * 100, 1)
-        if current_win_loss_total else 0
+        round((method_correct / current_wins) * 100, 1)
+        if current_wins else 0
     )
 
     return {
