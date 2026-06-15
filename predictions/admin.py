@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import Fighter, Event, Fight, Prediction, Result, HistoricalPick
-from .forms import PredictionAdminForm
+from .forms import PredictionAdminForm, ResultAdminForm
 
 
 @admin.register(Fighter)
@@ -57,9 +57,23 @@ class PredictionAdmin(admin.ModelAdmin):
 
 @admin.register(Result)
 class ResultAdmin(admin.ModelAdmin):
+    form = ResultAdminForm
+
     list_display = ("fight", "winner", "method", "round_finished")
-    search_fields = ("fight__fighter_a__last_name", "fight__fighter_b__last_name", "winner__last_name")
+    search_fields = (
+        "fight__fighter_a__first_name",
+        "fight__fighter_a__last_name",
+        "fight__fighter_b__first_name",
+        "fight__fighter_b__last_name",
+        "winner__first_name",
+        "winner__last_name",
+    )
     list_filter = ("method",)
+
+    autocomplete_fields = ("fight",)
+
+    class Media:
+        js = ("predictions/js/result_admin.js",)
 
 @admin.register(HistoricalPick)
 class HistoricalPickAdmin(admin.ModelAdmin):
