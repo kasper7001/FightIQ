@@ -96,7 +96,8 @@ class Command(BaseCommand):
     )
 
     def handle(self, *args, **options):
-        file_path = options["promotion"].strip().upper()
+        file_path = options["file_path"].strip()
+        promotion = options["promotion"].strip().upper()
 
         try:
             workbook = load_workbook(file_path, data_only=True)
@@ -141,7 +142,7 @@ class Command(BaseCommand):
             if not any(row_values):
                 continue
 
-            source_hash = make_hash(row_values)
+            source_hash = make_hash([promotion] + row_values)
 
             if HistoricalPick.objects.filter(source_hash=source_hash).exists():
                 skipped_count += 1
