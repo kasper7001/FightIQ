@@ -1,12 +1,10 @@
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Sum, Avg, Q
-from django.db.models.functions import TruncMonth
-from django.shortcuts import get_object_or_404, render
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, render
 
-from .models import Event, Fight, HistoricalPick
+from .models import Event, Fight, HistoricalPick, Prediction
 
 
 @login_required
@@ -42,89 +40,141 @@ def event_detail(request, event_id):
 
 @login_required
 def analytics_dashboard(request):
-    picks = HistoricalPick.objects.all()
-    settled_picks = picks.filter(outcome__in=["W", "L", "R"])
-    win_loss_picks = picks.filter(outcome__in=["W", "L"])
+    historical_rows = build_historical_pick_rows()
+    current_rows = build_current_prediction_rows()
 
-    total_picks = picks.count()
-    settled_count = settled_picks.count()
-    wins = picks.filter(outcome="W").count()
-    losses = picks.filter(outcome="L").count()
-    refunds = picks.filter(outcome="R").count()
-    pending = picks.filter(outcome="P").count()
+    all_rows = historical_rows + current_rows
+
+    context = build_analytics_context(all_rows, current_rows)
+    context["historical_count"] = len(historical_rows)
+    context["current_count"] = len(current_rows)
+    context["current_prediction_rows"] = current_rows[:25]
+
+    return render(request, "predictions/analytics.html", context)
+
+
+def build_historical_pick_rows():
+    rows = []
+
+    historical_picks = HistoricalPick.objects.all().order_by("-date", "-id")
+
+    for pick in historical_picks:
+        rows.append({
+            "source": "Historical",
+            "date": pick.date,
+            "event_name": pick.event_name or "Unknown Event",
+            "fight_name": pick.fight_name or "",
+            "pick_name": pick.pick_name or "",
+            "bet_type": pick.bet_type or "Unknown",
+            "stake": pick.stake,
+            "odds": pick.odds,
+            "outcome": pick.outcome,
+            "profit_loss": pick.profit_loss,
+            "predicted_method": "",
+            "actual_method": "",
+            "method_correct": None,
+            "is_current": False,
+        })
+
+    return rows
+
+
+def build_current_prediction_rows():
+    rows = []
+
+    predictions = (
+        Prediction.objects
+        .select_related(
+            "fight",
+            "fight__event",
+            "fight__fighter_a",
+            "fight__fighter_b",
+            "fight__result",
+            "predicted_winner",
+        )
+        .order_by("-fight__event__date", "-id")
+    )
+
+    for prediction in predictions:
+        result = getattr(prediction.fight, "result", None)
+
+        rows.append({
+            "source": "FightIQ",
+            "date": prediction.fight.event.date,
+            "event_name": f"{prediction.fight.event.promotion}: {prediction.fight.event.name}",
+            "fight_name": str(prediction.fight),
+            "pick_name": str(prediction.predicted_winner),
+            "bet_type": prediction.get_method_display(),
+            "stake": prediction.stake_amount(),
+            "odds": prediction.predicted_odds(),
+            "outcome": prediction.result_status(),
+            "profit_loss": prediction.profit_loss(),
+            "predicted_method": prediction.get_method_display(),
+            "actual_method": result.get_method_display() if result else "",
+            "method_correct": prediction.is_method_correct() if result else None,
+            "is_current": True,
+        })
+
+    return rows
+
+
+def build_analytics_context(rows, current_rows):
+    total_picks = len(rows)
+
+    settled_rows = [row for row in rows if row["outcome"] in ["W", "L", "R"]]
+    win_loss_rows = [row for row in rows if row["outcome"] in ["W", "L"]]
+
+    wins = len([row for row in rows if row["outcome"] == "W"])
+    losses = len([row for row in rows if row["outcome"] == "L"])
+    refunds = len([row for row in rows if row["outcome"] == "R"])
+    pending = len([row for row in rows if row["outcome"] == "P"])
 
     win_loss_total = wins + losses
     win_rate = round((wins / win_loss_total) * 100, 1) if win_loss_total else 0
 
-    total_profit_loss = settled_picks.aggregate(
-        total=Sum("profit_loss")
-    )["total"] or Decimal("0.00")
-
-    average_odds = win_loss_picks.exclude(odds__isnull=True).aggregate(
-        average=Avg("odds")
-    )["average"]
-
-    bet_type_rows = (
-        picks.values("bet_type")
-        .annotate(
-            total=Count("id"),
-            wins=Count("id", filter=Q(outcome="W")),
-            losses=Count("id", filter=Q(outcome="L")),
-            refunds=Count("id", filter=Q(outcome="R")),
-            profit=Sum("profit_loss"),
-        )
-        .order_by("-total")
+    total_profit_loss = sum(
+        row["profit_loss"] or Decimal("0.00")
+        for row in settled_rows
     )
 
-    bet_type_summary = []
-    for row in bet_type_rows:
-        decisions = row["wins"] + row["losses"]
-        row["win_rate"] = round((row["wins"] / decisions) * 100, 1) if decisions else 0
-        row["profit"] = row["profit"] or Decimal("0.00")
-        row["bet_type"] = row["bet_type"] or "Unknown"
-        bet_type_summary.append(row)
+    odds_values = [
+        row["odds"]
+        for row in win_loss_rows
+        if row["odds"] is not None
+    ]
 
-    top_events = (
-        picks.values("event_name")
-        .annotate(
-            total=Count("id"),
-            wins=Count("id", filter=Q(outcome="W")),
-            losses=Count("id", filter=Q(outcome="L")),
-            profit=Sum("profit_loss"),
-        )
-        .order_by("-profit")[:5]
+    average_odds = (
+        (sum(odds_values) / len(odds_values)).quantize(Decimal("0.01"))
+        if odds_values else None
     )
 
-    worst_events = (
-        picks.values("event_name")
-        .annotate(
-            total=Count("id"),
-            wins=Count("id", filter=Q(outcome="W")),
-            losses=Count("id", filter=Q(outcome="L")),
-            profit=Sum("profit_loss"),
-        )
-        .order_by("profit")[:5]
+    current_win_loss_rows = [
+        row for row in current_rows
+        if row["outcome"] in ["W", "L"]
+    ]
+
+    current_wins = len([row for row in current_rows if row["outcome"] == "W"])
+    current_losses = len([row for row in current_rows if row["outcome"] == "L"])
+    method_correct = len([
+        row for row in current_win_loss_rows
+        if row["method_correct"] is True
+    ])
+
+    current_win_loss_total = current_wins + current_losses
+
+    current_win_rate = (
+        round((current_wins / current_win_loss_total) * 100, 1)
+        if current_win_loss_total else 0
     )
 
-    monthly_summary = (
-        picks.exclude(date__isnull=True)
-        .annotate(month=TruncMonth("date"))
-        .values("month")
-        .annotate(
-            total=Count("id"),
-            wins=Count("id", filter=Q(outcome="W")),
-            losses=Count("id", filter=Q(outcome="L")),
-            refunds=Count("id", filter=Q(outcome="R")),
-            profit=Sum("profit_loss"),
-        )
-        .order_by("-month")[:12]
+    method_accuracy = (
+        round((method_correct / current_win_loss_total) * 100, 1)
+        if current_win_loss_total else 0
     )
 
-    odds_ranges = build_odds_range_summary(win_loss_picks)
-
-    return render(request, "predictions/analytics.html", {
+    return {
         "total_picks": total_picks,
-        "settled_count": settled_count,
+        "settled_count": len(settled_rows),
         "wins": wins,
         "losses": losses,
         "refunds": refunds,
@@ -132,15 +182,130 @@ def analytics_dashboard(request):
         "win_rate": win_rate,
         "total_profit_loss": total_profit_loss,
         "average_odds": average_odds,
-        "bet_type_summary": bet_type_summary,
-        "top_events": top_events,
-        "worst_events": worst_events,
-        "monthly_summary": monthly_summary,
-        "odds_ranges": odds_ranges,
-    })
+        "bet_type_summary": build_bet_type_summary(rows),
+        "odds_ranges": build_odds_range_summary(win_loss_rows),
+        "top_events": build_event_summary(rows, reverse=True)[:5],
+        "worst_events": build_event_summary(rows, reverse=False)[:5],
+        "monthly_summary": build_monthly_summary(rows)[:12],
+        "current_wins": current_wins,
+        "current_losses": current_losses,
+        "current_win_rate": current_win_rate,
+        "method_correct": method_correct,
+        "method_accuracy": method_accuracy,
+    }
 
 
-def build_odds_range_summary(picks):
+def build_bet_type_summary(rows):
+    grouped = {}
+
+    for row in rows:
+        bet_type = row["bet_type"] or "Unknown"
+
+        if bet_type not in grouped:
+            grouped[bet_type] = {
+                "bet_type": bet_type,
+                "total": 0,
+                "wins": 0,
+                "losses": 0,
+                "refunds": 0,
+                "profit": Decimal("0.00"),
+            }
+
+        grouped[bet_type]["total"] += 1
+
+        if row["outcome"] == "W":
+            grouped[bet_type]["wins"] += 1
+
+        if row["outcome"] == "L":
+            grouped[bet_type]["losses"] += 1
+
+        if row["outcome"] == "R":
+            grouped[bet_type]["refunds"] += 1
+
+        grouped[bet_type]["profit"] += row["profit_loss"] or Decimal("0.00")
+
+    summary = []
+
+    for data in grouped.values():
+        decisions = data["wins"] + data["losses"]
+        data["win_rate"] = round((data["wins"] / decisions) * 100, 1) if decisions else 0
+        summary.append(data)
+
+    return sorted(summary, key=lambda item: item["total"], reverse=True)
+
+
+def build_event_summary(rows, reverse):
+    grouped = {}
+
+    for row in rows:
+        event_name = row["event_name"] or "Unknown Event"
+
+        if event_name not in grouped:
+            grouped[event_name] = {
+                "event_name": event_name,
+                "total": 0,
+                "wins": 0,
+                "losses": 0,
+                "profit": Decimal("0.00"),
+            }
+
+        grouped[event_name]["total"] += 1
+
+        if row["outcome"] == "W":
+            grouped[event_name]["wins"] += 1
+
+        if row["outcome"] == "L":
+            grouped[event_name]["losses"] += 1
+
+        grouped[event_name]["profit"] += row["profit_loss"] or Decimal("0.00")
+
+    return sorted(
+        grouped.values(),
+        key=lambda item: item["profit"],
+        reverse=reverse,
+    )
+
+
+def build_monthly_summary(rows):
+    grouped = {}
+
+    for row in rows:
+        if not row["date"]:
+            continue
+
+        month = row["date"].replace(day=1)
+
+        if month not in grouped:
+            grouped[month] = {
+                "month": month,
+                "total": 0,
+                "wins": 0,
+                "losses": 0,
+                "refunds": 0,
+                "profit": Decimal("0.00"),
+            }
+
+        grouped[month]["total"] += 1
+
+        if row["outcome"] == "W":
+            grouped[month]["wins"] += 1
+
+        if row["outcome"] == "L":
+            grouped[month]["losses"] += 1
+
+        if row["outcome"] == "R":
+            grouped[month]["refunds"] += 1
+
+        grouped[month]["profit"] += row["profit_loss"] or Decimal("0.00")
+
+    return sorted(
+        grouped.values(),
+        key=lambda item: item["month"],
+        reverse=True,
+    )
+
+
+def build_odds_range_summary(rows):
     buckets = {
         "Under 1.50": {
             "total": 0,
@@ -168,8 +333,11 @@ def build_odds_range_summary(picks):
         },
     }
 
-    for pick in picks.exclude(odds__isnull=True):
-        odds = pick.odds
+    for row in rows:
+        odds = row["odds"]
+
+        if odds is None:
+            continue
 
         if odds < Decimal("1.50"):
             label = "Under 1.50"
@@ -182,13 +350,13 @@ def build_odds_range_summary(picks):
 
         buckets[label]["total"] += 1
 
-        if pick.outcome == "W":
+        if row["outcome"] == "W":
             buckets[label]["wins"] += 1
 
-        if pick.outcome == "L":
+        if row["outcome"] == "L":
             buckets[label]["losses"] += 1
 
-        buckets[label]["profit"] += pick.profit_loss or Decimal("0.00")
+        buckets[label]["profit"] += row["profit_loss"] or Decimal("0.00")
 
     summary = []
 
@@ -206,6 +374,7 @@ def build_odds_range_summary(picks):
         })
 
     return summary
+
 
 @login_required
 def fight_fighters_api(request, fight_id):

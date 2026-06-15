@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -104,10 +106,10 @@ class Prediction(models.Model):
     ]
 
     CONFIDENCE_CHOICES = [
-        (0, "£0 - Wouldn't bet"),
-        (250, "£2.50 - Fun/value bet"),
-        (500, "£5 - Solid bet"),
-        (1000, "£10 - Very confident"),
+        (0, "No confidence / would not pick"),
+        (250, "Low confidence / value angle"),
+        (500, "Medium confidence"),
+        (1000, "High confidence"),
     ]
 
     fight = models.OneToOneField(Fight, on_delete=models.CASCADE, related_name="prediction")
@@ -153,6 +155,71 @@ class Prediction(models.Model):
     def __str__(self):
         return f"{self.predicted_winner} by {self.get_method_display()}"
 
+    def stake_amount(self):
+        return Decimal("1.00")
+
+    def predicted_odds(self):
+        if not self.fight_id or not self.predicted_winner_id:
+            return None
+
+        if self.predicted_winner_id == self.fight.fighter_a_id:
+            return self.fight.fighter_a_odds
+
+        if self.predicted_winner_id == self.fight.fighter_b_id:
+            return self.fight.fighter_b_odds
+
+        return None
+
+    def result_status(self):
+        if not hasattr(self.fight, "result"):
+            return "P"
+
+        result = self.fight.result
+
+        if result.method == "NC":
+            return "R"
+
+        if not result.winner_id:
+            return "R"
+
+        if result.winner_id == self.predicted_winner_id:
+            return "W"
+
+        return "L"
+
+    def is_pick_correct(self):
+        return self.result_status() == "W"
+
+    def is_method_correct(self):
+        if self.result_status() != "W":
+            return False
+
+        if not hasattr(self.fight, "result"):
+            return False
+
+        return self.method == self.fight.result.method
+
+    def profit_loss(self):
+        outcome = self.result_status()
+        stake = self.stake_amount()
+        odds = self.predicted_odds()
+
+        if outcome == "P":
+            return None
+
+        if outcome == "R":
+            return Decimal("0.00")
+
+        if outcome == "L":
+            return -stake
+
+        if outcome == "W":
+            if odds is None:
+                return None
+
+            return (stake * (odds - Decimal("1.00"))).quantize(Decimal("0.01"))
+
+        return None
 
 class Result(models.Model):
     METHOD_CHOICES = [

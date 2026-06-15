@@ -1,9 +1,9 @@
 {% extends "predictions/base.html" %}
 
 {% block content %}
-    <h2>Historical Pick Analytics</h2>
+    <h2>Prediction Analytics</h2>
     <p class="muted">
-        Breakdown of your imported MMA prediction and betting history.
+        Combined breakdown of your imported Google Sheets picks and ongoing FightIQ predictions, tracked in units.
     </p>
 
     <div class="card">
@@ -11,6 +11,8 @@
 
         <p>
             <span class="badge">Total picks: {{ total_picks }}</span>
+            <span class="badge">Historical: {{ historical_count }}</span>
+            <span class="badge">FightIQ: {{ current_count }}</span>
             <span class="badge">Settled: {{ settled_count }}</span>
             <span class="badge">Wins: {{ wins }}</span>
             <span class="badge">Losses: {{ losses }}</span>
@@ -25,7 +27,7 @@
             <br>
             <strong>Average odds:</strong>
             {% if average_odds %}
-                {{ average_odds|floatformat:2 }}
+                {{ average_odds }}
             {% else %}
                 N/A
             {% endif %}
@@ -33,12 +35,75 @@
     </div>
 
     <div class="card">
-        <h3>Performance by Bet Type</h3>
+        <h3>FightIQ Prediction Accuracy</h3>
+
+        <p>
+            <span class="badge">Current wins: {{ current_wins }}</span>
+            <span class="badge">Current losses: {{ current_losses }}</span>
+            <span class="badge">Current win rate: {{ current_win_rate }}%</span>
+            <span class="badge">Exact method correct: {{ method_correct }}</span>
+            <span class="badge">Exact method rate: {{ method_accuracy }}%</span>
+        </p>
+
+        <p class="muted">
+            Exact method means both the winner and method were correct.
+        </p>
+    </div>
+
+    <div class="card">
+        <h3>Recent FightIQ Predictions</h3>
 
         <table>
             <thead>
                 <tr>
-                    <th>Bet Type</th>
+                    <th>Date</th>
+                    <th>Event</th>
+                    <th>Fight</th>
+                    <th>Pick</th>
+                    <th>Method Pick</th>
+                    <th>Actual Method</th>
+                    <th>Stake</th>
+                    <th>Odds</th>
+                    <th>Outcome</th>
+                    <th>P/L</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in current_prediction_rows %}
+                    <tr>
+                        <td>{{ row.date }}</td>
+                        <td>{{ row.event_name }}</td>
+                        <td>{{ row.fight_name }}</td>
+                        <td>{{ row.pick_name }}</td>
+                        <td>{{ row.predicted_method }}</td>
+                        <td>{{ row.actual_method|default:"Pending" }}</td>
+                        <td>{{ row.stake }}u</td>
+                        <td>{{ row.odds|default_if_none:"N/A" }}</td>
+                        <td>{{ row.outcome }}</td>
+                        <td>
+                            {% if row.profit_loss is None %}
+                                N/A
+                            {% else %}
+                                {{ row.profit_loss }}u
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="10">No FightIQ predictions added yet.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Performance by Bet Type / Method</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
                     <th>Total</th>
                     <th>Wins</th>
                     <th>Losses</th>
@@ -56,11 +121,11 @@
                         <td>{{ row.losses }}</td>
                         <td>{{ row.refunds }}</td>
                         <td>{{ row.win_rate }}%</td>
-                        <td>{{ row.profit }}</td>
+                        <td>{{ row.profit }}u</td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="7">No historical picks imported yet.</td>
+                        <td colspan="7">No picks available yet.</td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -89,7 +154,7 @@
                         <td>{{ row.wins }}</td>
                         <td>{{ row.losses }}</td>
                         <td>{{ row.win_rate }}%</td>
-                        <td>{{ row.profit }}</td>
+                        <td>{{ row.profit }}u</td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -116,7 +181,7 @@
                         <td>{{ event.total }}</td>
                         <td>{{ event.wins }}</td>
                         <td>{{ event.losses }}</td>
-                        <td>{{ event.profit|default:"0.00" }}</td>
+                        <td>{{ event.profit }}u</td>
                     </tr>
                 {% empty %}
                     <tr>
@@ -147,7 +212,7 @@
                         <td>{{ event.total }}</td>
                         <td>{{ event.wins }}</td>
                         <td>{{ event.losses }}</td>
-                        <td>{{ event.profit|default:"0.00" }}</td>
+                        <td>{{ event.profit }}u</td>
                     </tr>
                 {% empty %}
                     <tr>
@@ -180,7 +245,7 @@
                         <td>{{ month.wins }}</td>
                         <td>{{ month.losses }}</td>
                         <td>{{ month.refunds }}</td>
-                        <td>{{ month.profit|default:"0.00" }}</td>
+                        <td>{{ month.profit }}u</td>
                     </tr>
                 {% empty %}
                     <tr>
