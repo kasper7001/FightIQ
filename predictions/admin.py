@@ -79,6 +79,7 @@ class ResultAdmin(admin.ModelAdmin):
 class HistoricalPickAdmin(admin.ModelAdmin):
     list_display = (
         "date",
+        "promotion",
         "event_name",
         "fight_name",
         "pick_name",
@@ -89,5 +90,5 @@ class HistoricalPickAdmin(admin.ModelAdmin):
         "profit_loss",
     )
     search_fields = ("event_name", "fight_name", "pick_name", "bet_type")
-    list_filter = ("outcome", "bet_type", "country", "date")
+    list_filter = ("promotion", "outcome", "bet_type", "country", "date")
     readonly_fields = ("source_hash", "imported_at")

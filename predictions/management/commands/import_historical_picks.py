@@ -88,9 +88,15 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("file_path", type=str)
+        parser.add_argument(
+            "--promotion",
+            type=str,
+            default="UFC",
+            help="Promotion name for this spreadsheet, e.g. UFC, PFL, OKTAGON.",
+    )
 
     def handle(self, *args, **options):
-        file_path = options["file_path"]
+        file_path = options["promotion"].strip().upper()
 
         try:
             workbook = load_workbook(file_path, data_only=True)
@@ -151,6 +157,7 @@ class Command(BaseCommand):
             HistoricalPick.objects.create(
                 date=clean_date(sheet.cell(row=row_number, column=headers["date"]).value),
                 time=clean_time(sheet.cell(row=row_number, column=headers["time"]).value),
+                promotion=promotion,
                 country=clean_text(sheet.cell(row=row_number, column=headers["country"]).value),
                 event_name=event_name,
                 fight_name=fight_name,

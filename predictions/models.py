@@ -281,6 +281,7 @@ class HistoricalPick(models.Model):
     date = models.DateField(null=True, blank=True)
     time = models.TimeField(null=True, blank=True)
 
+    promotion = models.CharField(max_length=100, default="UFC")
     country = models.CharField(max_length=100, blank=True)
     event_name = models.CharField(max_length=200)
     fight_name = models.CharField(max_length=200)

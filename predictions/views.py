@@ -40,12 +40,18 @@ def event_detail(request, event_id):
 
 @login_required
 def analytics_dashboard(request):
-    historical_rows = build_historical_pick_rows()
-    current_rows = build_current_prediction_rows()
+    selected_promotion = request.GET.get("promotion", "").strip().upper()
+
+    historical_rows = build_historical_pick_rows(selected_promotion)
+    current_rows = build_current_prediction_rows(selected_promotion)
 
     all_rows = historical_rows + current_rows
 
+    available_promotions = get_available_promotions()
+
     context = build_analytics_context(all_rows, current_rows)
+    context["selected_promotion"] = selected_promotion
+    context["available_promotions"] = available_promotions
     context["historical_count"] = len(historical_rows)
     context["current_count"] = len(current_rows)
     context["current_prediction_rows"] = current_rows[:25]
@@ -53,14 +59,18 @@ def analytics_dashboard(request):
     return render(request, "predictions/analytics.html", context)
 
 
-def build_historical_pick_rows():
+def build_historical_pick_rows(selected_promotion=""):
     rows = []
 
     historical_picks = HistoricalPick.objects.all().order_by("-date", "-id")
 
+    if selected_promotion:
+        historical_picks = historical_picks.filter(promotion__iexact=selected_promotion)
+
     for pick in historical_picks:
         rows.append({
             "source": "Historical",
+            "promotion": pick.promotion,
             "date": pick.date,
             "event_name": pick.event_name or "Unknown Event",
             "fight_name": pick.fight_name or "",
@@ -79,7 +89,7 @@ def build_historical_pick_rows():
     return rows
 
 
-def build_current_prediction_rows():
+def build_current_prediction_rows(selected_promotion=""):
     rows = []
 
     predictions = (
@@ -95,11 +105,15 @@ def build_current_prediction_rows():
         .order_by("-fight__event__date", "-id")
     )
 
+    if selected_promotion:
+        predictions = predictions.filter(fight__event__promotion__iexact=selected_promotion)
+
     for prediction in predictions:
         result = getattr(prediction.fight, "result", None)
 
         rows.append({
             "source": "FightIQ",
+            "promotion": prediction.fight.event.promotion,
             "date": prediction.fight.event.date,
             "event_name": f"{prediction.fight.event.promotion}: {prediction.fight.event.name}",
             "fight_name": str(prediction.fight),
@@ -117,6 +131,20 @@ def build_current_prediction_rows():
 
     return rows
 
+def get_available_promotions():
+    historical_promotions = set(
+        HistoricalPick.objects
+        .exclude(promotion="")
+        .values_list("promotion", flat=True)
+    )
+
+    current_promotions = set(
+        Event.objects
+        .exclude(promotion="")
+        .values_list("promotion", flat=True)
+    )
+
+    return sorted(historical_promotions | current_promotions)
 
 def build_analytics_context(rows, current_rows):
     total_picks = len(rows)
