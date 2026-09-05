@@ -8,6 +8,7 @@ from openpyxl.utils.datetime import from_excel
 
 from predictions.models import HistoricalPick
 
+from django.contrib.auth import get_user_model
 
 def clean_text(value):
     if value is None:
@@ -93,11 +94,25 @@ class Command(BaseCommand):
             type=str,
             default="UFC",
             help="Promotion name for this spreadsheet, e.g. UFC, PFL, OKTAGON.",
-    )
+        )
+        parser.add_argument(
+            "--username",
+            type=str,
+            required=True,
+            help="FightIQ username that owns the imported picks.",
+        )
 
     def handle(self, *args, **options):
         file_path = options["file_path"].strip()
         promotion = options["promotion"].strip().upper()
+        username = options["username"].strip()
+
+        User = get_user_model()
+
+        try:
+            owner = User.objects.get(username=username)
+        except User.DoesNotExist:
+            raise CommandError(f"User does not exist: {username}")
 
         try:
             workbook = load_workbook(file_path, data_only=True)
@@ -144,7 +159,7 @@ class Command(BaseCommand):
 
             source_hash = make_hash([promotion] + row_values)
 
-            if HistoricalPick.objects.filter(source_hash=source_hash).exists():
+            if HistoricalPick.objects.filter(user=owner, source_hash=source_hash).exists():
                 skipped_count += 1
                 continue
 
@@ -156,6 +171,7 @@ class Command(BaseCommand):
                 continue
 
             HistoricalPick.objects.create(
+                user=owner,
                 date=clean_date(sheet.cell(row=row_number, column=headers["date"]).value),
                 time=clean_time(sheet.cell(row=row_number, column=headers["time"]).value),
                 promotion=promotion,

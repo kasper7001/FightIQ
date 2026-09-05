@@ -1,68 +1,112 @@
 {% extends "predictions/base.html" %}
 
 {% block content %}
-    <a href="{% url 'predictions:event_list' %}">&larr; Back to events</a>
 
-    <div class="card">
-        <h2>{{ event.promotion }}: {{ event.name }}</h2>
+<a href="{% url 'predictions:event_list' %}">
+    &larr; Back to events
+</a>
 
-        <p>
-            <span class="badge">{{ event.get_status_display }}</span>
-            <span class="badge">{{ event.date }}</span>
-            {% if event.location %}
-                <span class="badge">{{ event.location }}</span>
-            {% endif %}
-        </p>
-    </div>
+<div class="card">
+    <h2>{{ event.promotion }}: {{ event.name }}</h2>
 
-    <h2>Fight Card</h2>
+    <p>
+        <span class="badge">
+            {{ event.get_status_display }}
+        </span>
 
-    {% for fight in event.fights.all %}
+        <span class="badge">
+            {{ event.date }}
+        </span>
+
+        {% if event.location %}
+            <span class="badge">
+                {{ event.location }}
+            </span>
+        {% endif %}
+    </p>
+</div>
+
+<h2>Fight Card</h2>
+
+{% for row in fight_rows %}
+
+    {% with fight=row.fight prediction=row.prediction %}
+
         <div class="card">
+
             <h3>
-                {{ fight.fighter_a }} vs {{ fight.fighter_b }}
+                {{ fight.fighter_a }}
+                vs
+                {{ fight.fighter_b }}
             </h3>
 
             <p>
-                <span class="badge">{{ fight.get_weight_class_display }}</span>
-                <span class="badge">Fight order: {{ fight.fight_order }}</span>
+                <span class="badge">
+                    {{ fight.get_weight_class_display }}
+                </span>
+
+                <span class="badge">
+                    Fight order: {{ fight.fight_order }}
+                </span>
             </p>
 
             {% if fight.fighter_a_odds or fight.fighter_b_odds %}
                 <p class="muted">
                     Odds:
-                    {{ fight.fighter_a }} {{ fight.fighter_a_odds|default:"N/A" }}
+
+                    {{ fight.fighter_a }}
+                    {{ fight.fighter_a_odds|default:"N/A" }}
+
                     /
-                    {{ fight.fighter_b }} {{ fight.fighter_b_odds|default:"N/A" }}
+
+                    {{ fight.fighter_b }}
+                    {{ fight.fighter_b_odds|default:"N/A" }}
                 </p>
             {% endif %}
 
-            {% if fight.prediction %}
+            {% if prediction %}
+
                 <div class="prediction">
-                    <strong>Prediction:</strong>
-                    {{ fight.prediction.predicted_winner }}
-                    by {{ fight.prediction.get_method_display }}
+
+                    <strong>Your Prediction:</strong>
+
+                    {{ prediction.predicted_winner }}
+                    by
+                    {{ prediction.get_method_display }}
 
                     <br>
 
                     <strong>Confidence:</strong>
-                    {{ fight.prediction.confidence_display }}
+                    {{ prediction.confidence_display }}
 
-                    {% if fight.prediction.final_reasoning %}
-                        <p>{{ fight.prediction.final_reasoning }}</p>
+                    {% if prediction.final_reasoning %}
+                        <p>
+                            {{ prediction.final_reasoning }}
+                        </p>
                     {% endif %}
+
                 </div>
+
             {% else %}
+
                 <div class="no-prediction">
-                    No prediction added yet.
-                    <a href="/admin/predictions/prediction/add/">Add prediction</a>
+                    You haven't predicted this fight yet.
                 </div>
+
             {% endif %}
+
         </div>
-    {% empty %}
-        <div class="card">
-            <p>No fights added for this event yet.</p>
-            <a class="button" href="/admin/predictions/fight/add/">Add Fight</a>
-        </div>
-    {% endfor %}
+
+    {% endwith %}
+
+{% empty %}
+
+    <div class="card">
+        <p>
+            No fights have been added to this event yet.
+        </p>
+    </div>
+
+{% endfor %}
+
 {% endblock %}

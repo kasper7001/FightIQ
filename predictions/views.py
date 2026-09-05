@@ -3,6 +3,9 @@ from decimal import Decimal
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.contrib.auth import login
+from django.contrib.auth.forms import UserCreationForm
+from django.shortcuts import get_object_or_404, redirect, render
 
 from .models import Event, Fight, HistoricalPick, Prediction
 
@@ -11,13 +14,15 @@ from .models import Event, Fight, HistoricalPick, Prediction
 def event_list(request):
     events = (
         Event.objects
-        .prefetch_related("fights", "fights__prediction")
+        .prefetch_related("fights")
         .order_by("-date")
     )
 
-    return render(request, "predictions/event_list.html", {
-        "events": events,
-    })
+    return render(
+        request,
+        "predictions/event_list.html",
+        {"events": events},
+    )
 
 
 @login_required
@@ -27,27 +32,57 @@ def event_detail(request, event_id):
             "fights",
             "fights__fighter_a",
             "fights__fighter_b",
-            "fights__prediction",
-            "fights__prediction__predicted_winner",
         ),
         id=event_id,
     )
 
-    return render(request, "predictions/event_detail.html", {
-        "event": event,
-    })
+    user_predictions = {
+        prediction.fight_id: prediction
+        for prediction in (
+            Prediction.objects
+            .filter(
+                user=request.user,
+                fight__event=event,
+            )
+            .select_related("predicted_winner")
+        )
+    }
+
+    fight_rows = []
+
+    for fight in event.fights.all():
+        fight_rows.append({
+            "fight": fight,
+            "prediction": user_predictions.get(fight.id),
+        })
+
+    return render(
+        request,
+        "predictions/event_detail.html",
+        {
+            "event": event,
+            "fight_rows": fight_rows,
+        },
+    )
 
 
 @login_required
 def analytics_dashboard(request):
     selected_promotion = request.GET.get("promotion", "").strip().upper()
 
-    historical_rows = build_historical_pick_rows(selected_promotion)
-    current_rows = build_current_prediction_rows(selected_promotion)
+    historical_rows = build_historical_pick_rows(
+        request.user,
+        selected_promotion,
+    )
+
+    current_rows = build_current_prediction_rows(
+        request.user,
+        selected_promotion,
+    )
 
     all_rows = historical_rows + current_rows
 
-    available_promotions = get_available_promotions()
+    available_promotions = get_available_promotions(request.user)
 
     context = build_analytics_context(all_rows, current_rows)
     context["selected_promotion"] = selected_promotion
@@ -59,10 +94,14 @@ def analytics_dashboard(request):
     return render(request, "predictions/analytics.html", context)
 
 
-def build_historical_pick_rows(selected_promotion=""):
+def build_historical_pick_rows(user, selected_promotion=""):
     rows = []
 
-    historical_picks = HistoricalPick.objects.all().order_by("-date", "-id")
+    historical_picks = (
+        HistoricalPick.objects
+        .filter(user=user)
+        .order_by("-date", "-id")
+    )
 
     if selected_promotion:
         historical_picks = historical_picks.filter(promotion__iexact=selected_promotion)
@@ -89,11 +128,12 @@ def build_historical_pick_rows(selected_promotion=""):
     return rows
 
 
-def build_current_prediction_rows(selected_promotion=""):
+def build_current_prediction_rows(user, selected_promotion=""):
     rows = []
 
     predictions = (
         Prediction.objects
+        .filter(user=user)
         .select_related(
             "fight",
             "fight__event",
@@ -131,7 +171,7 @@ def build_current_prediction_rows(selected_promotion=""):
 
     return rows
 
-def get_available_promotions():
+def get_available_promotions(user):
     historical_promotions = set(
         HistoricalPick.objects
         .exclude(promotion="")
@@ -139,9 +179,10 @@ def get_available_promotions():
     )
 
     current_promotions = set(
-        Event.objects
-        .exclude(promotion="")
-        .values_list("promotion", flat=True)
+        Prediction.objects
+        .filter(user=user)
+        .exclude(fight__event__promotion="")
+        .values_list("fight__event__promotion", flat=True)
     )
 
     return sorted(historical_promotions | current_promotions)
@@ -423,3 +464,24 @@ def fight_fighters_api(request, fight_id):
     ]
 
     return JsonResponse({"fighters": fighters})
+
+def register(request):
+    if request.user.is_authenticated:
+        return redirect("predictions:event_list")
+
+    if request.method == "POST":
+        form = UserCreationForm(request.POST)
+
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+
+            return redirect("predictions:event_list")
+    else:
+        form = UserCreationForm()
+
+    return render(
+        request,
+        "registration/register.html",
+        {"form": form},
+    )

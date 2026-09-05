@@ -41,7 +41,6 @@ class Fighter(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 
-
 class Event(models.Model):
     STATUS_CHOICES = [
         ("UPCOMING", "Upcoming"),
@@ -112,7 +111,7 @@ class Prediction(models.Model):
         (1000, "High confidence"),
     ]
 
-    fight = models.OneToOneField(Fight, on_delete=models.CASCADE, related_name="prediction")
+    fight = models.ForeignKey(Fight, on_delete=models.CASCADE, related_name="prediction")
     predicted_winner = models.ForeignKey(Fighter, on_delete=models.CASCADE, related_name="predictions")
 
     method = models.CharField(max_length=20, choices=METHOD_CHOICES)
@@ -125,11 +124,10 @@ class Prediction(models.Model):
     betting_notes = models.TextField(blank=True)
     final_reasoning = models.TextField(blank=True)
 
-    created_by = models.ForeignKey(
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.CASCADE,
+        related_name="predictions",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -221,6 +219,14 @@ class Prediction(models.Model):
 
         return None
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "fight"],
+                name="unique_user_prediction_per_fight",
+            )
+        ]
+
 class Result(models.Model):
     METHOD_CHOICES = [
         ("KO_TKO", "KO/TKO"),
@@ -256,15 +262,14 @@ class Result(models.Model):
                 "Result winner must be one of the two fighters in this fight."
             )
 
-    def prediction_correct(self):
-        if not hasattr(self.fight, "prediction"):
-            return False
-        return self.fight.prediction.predicted_winner == self.winner
+    def prediction_correct_for(self, prediction):
+        return prediction.predicted_winner_id == self.winner_id
 
-    def method_correct(self):
-        if not hasattr(self.fight, "prediction"):
-            return False
-        return self.fight.prediction.method == self.method
+    def method_correct(self, prediction):
+        return (
+            prediction.predicted_winner_id == self.winner_id
+            and prediction.method == self.method
+        )
 
     def __str__(self):
         return f"{self.fight} result"
@@ -277,6 +282,12 @@ class HistoricalPick(models.Model):
         ("P", "Pending"),
         ("U", "Unknown"),
     ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="historical_picks",
+    )
 
     date = models.DateField(null=True, blank=True)
     time = models.TimeField(null=True, blank=True)
@@ -297,7 +308,7 @@ class HistoricalPick(models.Model):
     sheet_total_profit_loss = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True)
 
     source_row = models.PositiveIntegerField(null=True, blank=True)
-    source_hash = models.CharField(max_length=64, unique=True)
+    source_hash = models.CharField(max_length=64)
 
     imported_at = models.DateTimeField(auto_now_add=True)
 
@@ -308,6 +319,12 @@ class HistoricalPick(models.Model):
             models.Index(fields=["pick_name"]),
             models.Index(fields=["outcome"]),
             models.Index(fields=["date"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "source_hash"],
+                name="unique_user_historical_source_hash",
+            )
         ]
 
     def is_win(self):

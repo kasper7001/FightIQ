@@ -1,0 +1,22 @@
+{% extends "predictions/base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Log in to FightIQ</h2>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {{ form.as_p }}
+
+        <button class="button" type="submit">
+            Log In
+        </button>
+    </form>
+
+    <p>
+        Don't have an account?
+        <a href="{% url 'predictions:register' %}">Create one</a>
+    </p>
+</div>
+{% endblock %}

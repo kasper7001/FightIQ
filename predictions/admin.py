@@ -41,10 +41,13 @@ class PredictionAdmin(admin.ModelAdmin):
         "fight__fighter_b__last_name",
         "predicted_winner__first_name",
         "predicted_winner__last_name",
+        "user__username",
     )
     list_filter = ("method", "confidence")
 
     autocomplete_fields = ("fight",)
+
+    exclude = ("user",)
 
     class Media:
         js = ("predictions/js/prediction_admin.js",)
@@ -79,6 +82,7 @@ class ResultAdmin(admin.ModelAdmin):
 class HistoricalPickAdmin(admin.ModelAdmin):
     list_display = (
         "date",
+        "user",
         "promotion",
         "event_name",
         "fight_name",
@@ -90,5 +94,5 @@ class HistoricalPickAdmin(admin.ModelAdmin):
         "profit_loss",
     )
     search_fields = ("event_name", "fight_name", "pick_name", "bet_type")
-    list_filter = ("promotion", "outcome", "bet_type", "country", "date")
+    list_filter = ("user", "promotion", "outcome", "bet_type", "country", "date")
     readonly_fields = ("source_hash", "imported_at")
