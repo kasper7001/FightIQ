@@ -125,6 +125,10 @@
                     Analytics
                 </a>
 
+                <a href="{% url 'predictions:bet_list' %}">
+                    Bets
+                </a>
+
                 {% if user.is_staff %}
                     <a href="/admin/">Admin</a>
                 {% endif %}

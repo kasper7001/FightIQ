@@ -1,0 +1,43 @@
+{% extends "predictions/base.html" %}
+{% load static %}
+
+{% block content %}
+
+<a href="{% url 'predictions:bet_list' %}">
+    &larr; Back to bets
+</a>
+
+<div class="card">
+
+    <h2>Add Single Bet</h2>
+
+    <p class="muted">
+        Track a fight winner bet using decimal odds and units.
+    </p>
+
+    <form method="post">
+
+        {% csrf_token %}
+
+        <h3>Bet</h3>
+
+        {{ bet_form.as_p }}
+
+        <h3>Selection</h3>
+
+        {{ selection_form.as_p }}
+
+        <button
+            class="button"
+            type="submit"
+        >
+            Save Bet
+        </button>
+
+    </form>
+
+</div>
+
+<script src="{% static 'predictions/js/single_bet_form.js' %}"></script>
+
+{% endblock %}

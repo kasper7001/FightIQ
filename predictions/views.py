@@ -7,8 +7,8 @@ from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .models import Event, Fight, HistoricalPick, Prediction
-
+from .models import Event, Fight, HistoricalPick, Prediction, Bet, BetSelection
+from .forms import BetForm, SingleBetSelectionForm
 
 @login_required
 def event_list(request):
@@ -484,4 +484,111 @@ def register(request):
         request,
         "registration/register.html",
         {"form": form},
+    )
+
+@login_required
+def bet_list(request):
+    bets = list(
+        Bet.objects
+        .filter(user=request.user)
+        .prefetch_related(
+            "selections",
+            "selections__fight",
+            "selections__fight__fighter_a",
+            "selections__fight__fighter_b",
+        )
+        .order_by("-placed_at", "-id")
+    )
+
+    total_bets = len(bets)
+    won_bets = 0
+    lost_bets = 0
+    pending_bets = 0
+    void_bets = 0
+
+    total_profit_loss = Decimal("0.00")
+
+    for bet in bets:
+        status = bet.status()
+
+        if status == "WON":
+            won_bets += 1
+        elif status == "LOST":
+            lost_bets += 1
+        elif status == "VOID":
+            void_bets += 1
+        else:
+            pending_bets += 1
+
+        profit = bet.profit_loss()
+
+        if profit is not None:
+            total_profit_loss += profit
+
+    settled_decisions = won_bets + lost_bets
+
+    win_rate = (
+        round((won_bets / settled_decisions) * 100, 1)
+        if settled_decisions
+        else 0
+    )
+
+    return render(
+        request,
+        "predictions/bet_list.html",
+        {
+            "bets": bets,
+            "total_bets": total_bets,
+            "won_bets": won_bets,
+            "lost_bets": lost_bets,
+            "pending_bets": pending_bets,
+            "void_bets": void_bets,
+            "total_profit_loss": total_profit_loss,
+            "win_rate": win_rate,
+        },
+    )
+
+
+@login_required
+def add_bet(request):
+    if request.method == "POST":
+        bet_form = BetForm(request.POST)
+        selection_form = SingleBetSelectionForm(request.POST)
+
+        if bet_form.is_valid() and selection_form.is_valid():
+            bet = bet_form.save(commit=False)
+
+            bet.user = request.user
+            bet.bet_type = "SINGLE"
+            bet.save()
+
+            selection = selection_form.save(commit=False)
+
+            fighter = selection_form.cleaned_data["fighter"]
+
+            selection.bet = bet
+            selection.market = "MONEYLINE"
+            selection.selection = str(fighter)
+            selection.outcome = "PENDING"
+
+            selection.save()
+
+            return redirect("predictions:bet_list")
+
+    else:
+        bet_form = BetForm(
+            initial={
+                "stake_units": Decimal("1.00"),
+            }
+        )
+
+        selection_form = SingleBetSelectionForm()
+
+    return render(
+        request,
+        "predictions/add_bet.html",
+        {
+            "bet_form": bet_form,
+            "selection_form": selection_form,
+        },
     )

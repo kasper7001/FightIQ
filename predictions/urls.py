@@ -22,5 +22,15 @@ urlpatterns = [
         "logout/",
         auth_views.LoginView.as_view(),
         name="logout",
-    )
+    ),
+    path(
+        "bets/",
+        views.bet_list,
+        name="bet_list"
+    ),
+    path(
+        "bets/add/",
+        views.add_bet,
+        name="add_bet",
+    ),
 ]

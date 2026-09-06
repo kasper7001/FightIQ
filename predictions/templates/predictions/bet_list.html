@@ -1,0 +1,155 @@
+{% extends "predictions/base.html" %}
+
+{% block content %}
+
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h2>My Bets</h2>
+
+        <p class="muted">
+            Track your MMA bets and performance in units.
+        </p>
+    </div>
+
+    <a
+        class="button"
+        href="{% url 'predictions:add_bet' %}"
+    >
+        + Add Bet
+    </a>
+</div>
+
+<div class="card">
+    <h3>Betting Summary</h3>
+
+    <p>
+        <span class="badge">
+            Total Bets: {{ total_bets }}
+        </span>
+
+        <span class="badge">
+            Won: {{ won_bets }}
+        </span>
+
+        <span class="badge">
+            Lost: {{ lost_bets }}
+        </span>
+
+        <span class="badge">
+            Pending: {{ pending_bets }}
+        </span>
+
+        <span class="badge">
+            Void: {{ void_bets }}
+        </span>
+    </p>
+
+    <p>
+        <strong>Win Rate:</strong>
+        {{ win_rate }}%
+
+        <br>
+
+        <strong>Total P/L:</strong>
+        {{ total_profit_loss }}u
+    </p>
+</div>
+
+<h2>Bet History</h2>
+
+{% for bet in bets %}
+
+    <div class="card">
+
+        <h3>
+            {{ bet.get_bet_type_display }}
+        </h3>
+
+        <p>
+            <span class="badge">
+                {{ bet.placed_at }}
+            </span>
+
+            <span class="badge">
+                {{ bet.status }}
+            </span>
+        </p>
+
+        {% for selection in bet.selections.all %}
+
+            <p>
+                <strong>
+                    {{ selection.fight }}
+                </strong>
+
+                <br>
+
+                Selection:
+                {{ selection.selection }}
+
+                <br>
+
+                Market:
+                {{ selection.get_market_display }}
+
+                <br>
+
+                Odds:
+                {{ selection.odds }}
+
+                <br>
+
+                Result:
+                {{ selection.get_outcome_display }}
+            </p>
+
+        {% endfor %}
+
+        <p>
+            <strong>Stake:</strong>
+            {{ bet.stake_units }}u
+
+            <br>
+
+            <strong>Odds:</strong>
+            {{ bet.combined_odds }}
+
+            <br>
+
+            <strong>P/L:</strong>
+
+            {% if bet.profit_loss is None %}
+                Pending
+            {% else %}
+                {{ bet.profit_loss }}u
+            {% endif %}
+        </p>
+
+        {% if bet.notes %}
+            <p class="muted">
+                {{ bet.notes }}
+            </p>
+        {% endif %}
+
+    </div>
+
+{% empty %}
+
+    <div class="card">
+        <h3>No bets yet</h3>
+
+        <p>
+            You haven't tracked any bets yet.
+        </p>
+
+        <a
+            class="button"
+            href="{% url 'predictions:add_bet' %}"
+        >
+            Add Your First Bet
+        </a>
+    </div>
+
+{% endfor %}
+
+{% endblock %}
