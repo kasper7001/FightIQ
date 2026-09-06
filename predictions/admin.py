@@ -1,7 +1,6 @@
 from django.contrib import admin
-from .models import Fighter, Event, Fight, Prediction, Result, HistoricalPick
+from .models import Fighter, Event, Fight, Prediction, Result, HistoricalPick, Bet, BetSelection
 from .forms import PredictionAdminForm, ResultAdminForm
-
 
 @admin.register(Fighter)
 class FighterAdmin(admin.ModelAdmin):
@@ -96,3 +95,90 @@ class HistoricalPickAdmin(admin.ModelAdmin):
     search_fields = ("event_name", "fight_name", "pick_name", "bet_type")
     list_filter = ("user", "promotion", "outcome", "bet_type", "country", "date")
     readonly_fields = ("source_hash", "imported_at")
+
+class BetSelectionInline(admin.TabularInline):
+    model = BetSelection
+    extra = 1
+    autocomplete_fields = ("fight",)
+
+
+@admin.register(Bet)
+class BetAdmin(admin.ModelAdmin):
+    list_display = (
+        "placed_at",
+        "user",
+        "bet_type",
+        "stake_units",
+        "display_odds",
+        "display_status",
+        "display_profit_loss",
+    )
+
+    list_filter = (
+        "bet_type",
+        "placed_at",
+    )
+
+    search_fields = (
+        "user__username",
+        "selections__selection",
+        "selections__fight__fighter_a__last_name",
+        "selections__fight__fighter_b__last_name",
+    )
+
+    exclude = ("user",)
+
+    inlines = [BetSelectionInline]
+
+    def save_model(self, request, obj, form, change):
+        if not obj.user_id:
+            obj.user = request.user
+
+        super().save_model(request, obj, form, change)
+
+    @admin.display(description="Odds")
+    def display_odds(self, obj):
+        return obj.combined_odds() or "-"
+
+    @admin.display(description="Status")
+    def display_status(self, obj):
+        return obj.status()
+
+    @admin.display(description="P/L")
+    def display_profit_loss(self, obj):
+        value = obj.profit_loss()
+
+        if value is None:
+            return "-"
+
+        return f"{value}u"
+
+
+@admin.register(BetSelection)
+class BetSelectionAdmin(admin.ModelAdmin):
+    list_display = (
+        "bet",
+        "fight",
+        "market",
+        "selection",
+        "odds",
+        "outcome",
+    )
+
+    list_filter = (
+        "market",
+        "outcome",
+    )
+
+    autocomplete_fields = (
+        "bet",
+        "fight",
+    )
+
+    search_fields = (
+        "selection",
+        "fight__fighter_a__first_name",
+        "fight__fighter_a__last_name",
+        "fight__fighter_b__first_name",
+        "fight__fighter_b__last_name",
+    )

@@ -4,6 +4,7 @@ from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone
 
 
 class Fighter(models.Model):
@@ -341,3 +342,145 @@ class HistoricalPick(models.Model):
 
     def __str__(self):
         return f"{self.event_name} - {self.pick_name} ({self.get_outcome_display()})"
+
+class Bet(models.Model):
+    BET_TYPE_CHOICES = [
+        ("SINGLE", "Single"),
+        ("ACCA", "Accumulator"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="bets",
+    )
+
+    bet_type = models.CharField(
+        max_length=20,
+        choices=BET_TYPE_CHOICES,
+        default="SINGLE",
+    )
+
+    stake_units = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal("1.00"),
+    )
+
+    placed_at = models.DateTimeField(default=timezone.now)
+
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-placed_at", "-id"]
+
+    def combined_odds(self):
+        odds = Decimal("1.00")
+
+        selections = self.selections.exclude(outcome="VOID")
+
+        if not selections.exists():
+            return None
+
+        for selection in selections:
+            odds *= selection.odds
+
+        return odds.quantize(Decimal("0.01"))
+
+    def status(self):
+        selections = list(self.selections.all())
+
+        if not selections:
+            return "PENDING"
+
+        if any(selection.outcome == "LOST" for selection in selections):
+            return "LOST"
+
+        if any(selection.outcome == "PENDING" for selection in selections):
+            return "PENDING"
+
+        if all(selection.outcome == "VOID" for selection in selections):
+            return "VOID"
+
+        return "WON"
+
+    def profit_loss(self):
+        status = self.status()
+
+        if status == "PENDING":
+            return None
+
+        if status == "VOID":
+            return Decimal("0.00")
+
+        if status == "LOST":
+            return -self.stake_units
+
+        odds = self.combined_odds()
+
+        if odds is None:
+            return None
+
+        return (
+            self.stake_units * (odds - Decimal("1.00"))
+        ).quantize(Decimal("0.01"))
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_bet_type_display()} - {self.placed_at.date()}"
+
+
+class BetSelection(models.Model):
+    MARKET_CHOICES = [
+        ("MONEYLINE", "Fight Winner"),
+        ("METHOD", "Method of Victory"),
+        ("DISTANCE", "Fight Goes the Distance"),
+        ("TOTAL_ROUNDS", "Over/Under Rounds"),
+        ("ROUND", "Round Betting"),
+        ("OTHER", "Other"),
+    ]
+
+    OUTCOME_CHOICES = [
+        ("PENDING", "Pending"),
+        ("WON", "Won"),
+        ("LOST", "Lost"),
+        ("VOID", "Void"),
+    ]
+
+    bet = models.ForeignKey(
+        Bet,
+        on_delete=models.CASCADE,
+        related_name="selections",
+    )
+
+    fight = models.ForeignKey(
+        Fight,
+        on_delete=models.CASCADE,
+        related_name="bet_selections",
+    )
+
+    market = models.CharField(
+        max_length=30,
+        choices=MARKET_CHOICES,
+        default="MONEYLINE",
+    )
+
+    selection = models.CharField(max_length=200)
+
+    odds = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+    )
+
+    outcome = models.CharField(
+        max_length=20,
+        choices=OUTCOME_CHOICES,
+        default="PENDING",
+    )
+
+    notes = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.selection} @ {self.odds}"
