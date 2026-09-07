@@ -568,6 +568,7 @@ def add_bet(request):
 
             selection.bet = bet
             selection.market = "MONEYLINE"
+            selection.selected_fighter = fighter
             selection.selection = str(fighter)
             selection.outcome = "PENDING"
 

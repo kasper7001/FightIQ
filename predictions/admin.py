@@ -160,6 +160,7 @@ class BetSelectionAdmin(admin.ModelAdmin):
         "bet",
         "fight",
         "market",
+        "selected_fighter",
         "selection",
         "odds",
         "outcome",

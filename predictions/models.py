@@ -461,6 +461,14 @@ class BetSelection(models.Model):
         related_name="bet_selections",
     )
 
+    selected_fighter = models.ForeignKey(
+            Fighter,
+            on_delete=models.SET_NULL,
+            null=True,
+            blank=True,
+            related_name="bet_selections",
+        )
+
     market = models.CharField(
         max_length=30,
         choices=MARKET_CHOICES,
