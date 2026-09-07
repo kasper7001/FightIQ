@@ -6,9 +6,163 @@ from django.shortcuts import get_object_or_404, render
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from .models import Event, Fight, HistoricalPick, Prediction, Bet, BetSelection
 from .forms import BetForm, SingleBetSelectionForm
+
+@login_required
+def dashboard(request):
+    user = request.user
+
+    # -------------------------
+    # BETTING STATS
+    # -------------------------
+
+    bets = list(
+        Bet.objects
+        .filter(user=user)
+        .prefetch_related(
+            "selections",
+            "selections__fight",
+            "selections__fight__fighter_a",
+            "selections__fight__fighter_b",
+        )
+        .order_by("-placed_at", "-id")
+    )
+
+    total_bets = len(bets)
+
+    won_bets = 0
+    lost_bets = 0
+    pending_bets = 0
+    void_bets = 0
+
+    total_profit_loss = Decimal("0.00")
+
+    recent_bet_rows = []
+
+    for bet in bets:
+        status = bet.status()
+        profit = bet.profit_loss()
+        odds = bet.combined_odds()
+
+        if status == "WON":
+            won_bets += 1
+        elif status == "LOST":
+            lost_bets += 1
+        elif status == "VOID":
+            void_bets += 1
+        else:
+            pending_bets += 1
+
+        if profit is not None:
+            total_profit_loss += profit
+
+        if len(recent_bet_rows) < 5:
+            recent_bet_rows.append({
+                "bet": bet,
+                "status": status,
+                "profit": profit,
+                "odds": odds,
+            })
+
+    settled_bets = won_bets + lost_bets
+
+    bet_win_rate = (
+        round((won_bets / settled_bets) * 100, 1)
+        if settled_bets
+        else 0
+    )
+
+    # -------------------------
+    # PREDICTION STATS
+    # -------------------------
+
+    predictions = list(
+        Prediction.objects
+        .filter(user=user)
+        .select_related(
+            "fight",
+            "fight__event",
+            "fight__fighter_a",
+            "fight__fighter_b",
+            "fight__result",
+            "predicted_winner",
+        )
+        .order_by("-fight__event__date", "-id")
+    )
+
+    prediction_wins = 0
+    prediction_losses = 0
+    prediction_pending = 0
+
+    recent_predictions = []
+
+    for prediction in predictions:
+        outcome = prediction.result_status()
+
+        if outcome == "W":
+            prediction_wins += 1
+        elif outcome == "L":
+            prediction_losses += 1
+        else:
+            prediction_pending += 1
+
+        if len(recent_predictions) < 5:
+            recent_predictions.append({
+                "prediction": prediction,
+                "outcome": outcome,
+            })
+
+    prediction_settled = prediction_wins + prediction_losses
+
+    prediction_accuracy = (
+        round(
+            (prediction_wins / prediction_settled) * 100,
+            1,
+        )
+        if prediction_settled
+        else 0
+    )
+
+    # -------------------------
+    # UPCOMING EVENTS
+    # -------------------------
+
+    upcoming_events = (
+        Event.objects
+        .filter(
+            date__gte=timezone.localdate(),
+            status="UPCOMING",
+        )
+        .prefetch_related("fights")
+        .order_by("date")[:5]
+    )
+
+    return render(
+        request,
+        "predictions/dashboard.html",
+        {
+            "total_bets": total_bets,
+            "won_bets": won_bets,
+            "lost_bets": lost_bets,
+            "pending_bets": pending_bets,
+            "void_bets": void_bets,
+            "total_profit_loss": total_profit_loss,
+            "bet_win_rate": bet_win_rate,
+
+            "total_predictions": len(predictions),
+            "prediction_wins": prediction_wins,
+            "prediction_losses": prediction_losses,
+            "prediction_pending": prediction_pending,
+            "prediction_accuracy": prediction_accuracy,
+
+            "recent_bet_rows": recent_bet_rows,
+            "recent_predictions": recent_predictions,
+            "upcoming_events": upcoming_events,
+        },
+    )
 
 @login_required
 def event_list(request):

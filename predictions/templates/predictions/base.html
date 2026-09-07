@@ -110,6 +110,45 @@
         tr:hover {
             background: #f9fafb;
         }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .stat-card h3 {
+            margin-top: 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 20px;
+        }
+
+        .positive {
+            color: #059669;
+        }
+
+        .negative {
+            color: #dc2626;
+        }
     </style>
 </head>
 <body>
@@ -117,16 +156,20 @@
         <h1>FightIQ</h1>
         <nav>
             {% if user.is_authenticated %}
+                <a href="{% url 'predictions:dashboard' %}">
+                     Home
+                </a>
+
                 <a href="{% url 'predictions:event_list' %}">
                     Events
                 </a>
 
-                <a href="{% url 'predictions:analytics_dashboard' %}">
-                    Analytics
-                </a>
-
                 <a href="{% url 'predictions:bet_list' %}">
                     Bets
+                </a>
+
+                <a href="{% url 'predictions:analytics_dashboard' %}">
+                    Analytics
                 </a>
 
                 {% if user.is_staff %}

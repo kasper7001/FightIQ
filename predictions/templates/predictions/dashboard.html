@@ -1,0 +1,302 @@
+{% extends "predictions/base.html" %}
+
+{% block content %}
+
+<h2>FightIQ Dashboard</h2>
+
+<p class="muted">
+    Welcome back, {{ user.username }}.
+</p>
+
+
+<div class="stats-grid">
+
+    <div class="stat-card">
+        <h3>Betting P/L</h3>
+
+        <div class="stat-value
+            {% if total_profit_loss > 0 %}
+                positive
+            {% elif total_profit_loss < 0 %}
+                negative
+            {% endif %}
+        ">
+            {{ total_profit_loss }}u
+        </div>
+    </div>
+
+
+    <div class="stat-card">
+        <h3>Bet Win Rate</h3>
+
+        <div class="stat-value">
+            {{ bet_win_rate }}%
+        </div>
+    </div>
+
+
+    <div class="stat-card">
+        <h3>Total Bets</h3>
+
+        <div class="stat-value">
+            {{ total_bets }}
+        </div>
+    </div>
+
+
+    <div class="stat-card">
+        <h3>Prediction Accuracy</h3>
+
+        <div class="stat-value">
+            {{ prediction_accuracy }}%
+        </div>
+    </div>
+
+</div>
+
+
+<div style="margin-bottom: 24px;">
+
+    <a
+        class="button"
+        href="{% url 'predictions:add_bet' %}"
+    >
+        + Add Bet
+    </a>
+
+</div>
+
+
+<div class="dashboard-grid">
+
+    <div>
+
+        <div class="card">
+
+            <h3>Recent Bets</h3>
+
+            {% for row in recent_bet_rows %}
+
+                <div style="
+                    border-bottom: 1px solid #e5e7eb;
+                    padding: 12px 0;
+                ">
+
+                    {% for selection in row.bet.selections.all %}
+
+                        <strong>
+                            {{ selection.selection }}
+                        </strong>
+
+                        <br>
+
+                        <span class="muted">
+                            {{ selection.fight }}
+                        </span>
+
+                    {% endfor %}
+
+                    <p>
+                        {{ row.bet.stake_units }}u
+                        @
+                        {{ row.odds|default:"-" }}
+
+                        ·
+
+                        {{ row.status }}
+                    </p>
+
+                    {% if row.profit is not None %}
+
+                        <strong
+                            class="
+                                {% if row.profit > 0 %}
+                                    positive
+                                {% elif row.profit < 0 %}
+                                    negative
+                                {% endif %}
+                            "
+                        >
+                            {{ row.profit }}u
+                        </strong>
+
+                    {% endif %}
+
+                </div>
+
+            {% empty %}
+
+                <p class="muted">
+                    You haven't tracked any bets yet.
+                </p>
+
+            {% endfor %}
+
+
+            <p>
+                <a href="{% url 'predictions:bet_list' %}">
+                    View all bets →
+                </a>
+            </p>
+
+        </div>
+
+
+        <div class="card">
+
+            <h3>Recent Predictions</h3>
+
+            {% for row in recent_predictions %}
+
+                <div style="
+                    border-bottom: 1px solid #e5e7eb;
+                    padding: 12px 0;
+                ">
+
+                    <strong>
+                        {{ row.prediction.fight }}
+                    </strong>
+
+                    <p>
+                        Pick:
+                        {{ row.prediction.predicted_winner }}
+
+                        by
+
+                        {{ row.prediction.get_method_display }}
+                    </p>
+
+                    <span class="badge">
+
+                        {% if row.outcome == "W" %}
+                            Correct
+
+                        {% elif row.outcome == "L" %}
+                            Incorrect
+
+                        {% elif row.outcome == "R" %}
+                            Void
+
+                        {% else %}
+                            Pending
+
+                        {% endif %}
+
+                    </span>
+
+                </div>
+
+            {% empty %}
+
+                <p class="muted">
+                    You haven't made any predictions yet.
+                </p>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+
+    <div>
+
+        <div class="card">
+
+            <h3>Upcoming Events</h3>
+
+            {% for event in upcoming_events %}
+
+                <div style="
+                    border-bottom: 1px solid #e5e7eb;
+                    padding: 12px 0;
+                ">
+
+                    <strong>
+                        {{ event.promotion }}
+                    </strong>
+
+                    <h4>
+                        {{ event.name }}
+                    </h4>
+
+                    <p class="muted">
+                        {{ event.date }}
+
+                        {% if event.location %}
+                            · {{ event.location }}
+                        {% endif %}
+                    </p>
+
+                    <p>
+                        {{ event.fights.count }}
+                        fight{{ event.fights.count|pluralize }}
+                    </p>
+
+                    <a
+                        href="{% url 'predictions:event_detail' event.id %}"
+                    >
+                        View Fight Card →
+                    </a>
+
+                </div>
+
+            {% empty %}
+
+                <p class="muted">
+                    No upcoming events.
+                </p>
+
+            {% endfor %}
+
+
+            <p>
+                <a href="{% url 'predictions:event_list' %}">
+                    View all events →
+                </a>
+            </p>
+
+        </div>
+
+
+        <div class="card">
+
+            <h3>Your Record</h3>
+
+            <p>
+                <strong>Bets</strong>
+            </p>
+
+            <p>
+                {{ won_bets }} Won
+                ·
+                {{ lost_bets }} Lost
+                ·
+                {{ pending_bets }} Pending
+                ·
+                {{ void_bets }} Void
+            </p>
+
+            <p>
+                <strong>Predictions</strong>
+            </p>
+
+            <p>
+                {{ prediction_wins }} Correct
+                ·
+                {{ prediction_losses }} Incorrect
+                ·
+                {{ prediction_pending }} Pending
+            </p>
+
+            <a href="{% url 'predictions:analytics_dashboard' %}">
+                View full analytics →
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
