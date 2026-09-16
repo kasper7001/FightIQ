@@ -167,3 +167,93 @@ class SingleBetSelectionForm(forms.ModelForm):
                 )
 
         return cleaned_data
+
+class UserPredictionForm(forms.ModelForm):
+    class Meta:
+        model = Prediction
+
+        fields = [
+            "predicted_winner",
+            "method",
+            "confidence",
+            "striking_notes",
+            "grappling_notes",
+            "cardio_notes",
+            "durability_notes",
+            "betting_notes",
+            "final_reasoning",
+        ]
+
+        widgets = {
+            "striking_notes": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "placeholder": "Striking matchup, range, power, defence...",
+                }
+            ),
+            "grappling_notes": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "placeholder": "Wrestling, takedowns, submissions...",
+                }
+            ),
+            "cardio_notes": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "placeholder": "Cardio and pace considerations...",
+                }
+            ),
+            "durability_notes": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "placeholder": "Chin, damage history, toughness...",
+                }
+            ),
+            "betting_notes": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "placeholder": "Odds, value, betting angles...",
+                }
+            ),
+            "final_reasoning": forms.Textarea(
+                attrs={
+                    "rows": 5,
+                    "placeholder": "Summarise why you are making this prediction...",
+                }
+            ),
+        }
+
+    def __init__(self, *args, fight=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fight = fight
+
+        if fight:
+            self.fields["predicted_winner"].queryset = Fighter.objects.filter(
+                id__in=[
+                    fight.fighter_a_id,
+                    fight.fighter_b_id,
+                ]
+            )
+        else:
+            self.fields["predicted_winner"].queryset = Fighter.objects.none()
+
+    def clean_predicted_winner(self):
+        predicted_winner = self.cleaned_data["predicted_winner"]
+
+        if not self.fight:
+            raise forms.ValidationError(
+                "No fight has been selected."
+            )
+
+        valid_fighter_ids = [
+            self.fight.fighter_a_id,
+            self.fight.fighter_b_id,
+        ]
+
+        if predicted_winner.id not in valid_fighter_ids:
+            raise forms.ValidationError(
+                "You can only select a fighter taking part in this fight."
+            )
+
+        return predicted_winner

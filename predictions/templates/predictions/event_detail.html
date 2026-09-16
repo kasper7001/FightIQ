@@ -74,7 +74,7 @@
                     by
                     {{ prediction.get_method_display }}
 
-                    <br>
+                     <br>
 
                     <strong>Confidence:</strong>
                     {{ prediction.confidence_display }}
@@ -85,12 +85,48 @@
                         </p>
                     {% endif %}
 
+                    {% if not row.has_result %}
+
+                        <a
+                            class="button"
+                            href="{% url 'predictions:manage_prediction' fight.id %}"
+                        >
+                            Edit Prediction
+                        </a>
+
+                    {% else %}
+
+                        <p class="muted">
+                            Prediction locked — fight completed.
+                        </p>
+
+                    {% endif %}
+
                 </div>
 
             {% else %}
 
                 <div class="no-prediction">
-                    You haven't predicted this fight yet.
+
+                    {% if row.has_result %}
+
+                        Prediction closed — this fight has already been completed.
+
+                    {% else %}
+
+                        <p>
+                            You haven't predicted this fight yet.
+                        </p>
+
+                        <a
+                            class="button"
+                             href="{% url 'predictions:manage_prediction' fight.id %}"
+                        >
+                            Make Prediction
+                        </a>
+
+                    {% endif %}
+
                 </div>
 
             {% endif %}

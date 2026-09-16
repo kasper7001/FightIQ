@@ -1,0 +1,146 @@
+{% extends "predictions/base.html" %}
+
+{% block content %}
+
+<a href="{% url 'predictions:event_detail' fight.event.id %}">
+    &larr; Back to fight card
+</a>
+
+
+<div class="card">
+
+    {% if prediction %}
+
+        <h2>Edit Prediction</h2>
+
+    {% else %}
+
+        <h2>Make Prediction</h2>
+
+    {% endif %}
+
+
+    <h3>
+        {{ fight.fighter_a }}
+        vs
+        {{ fight.fighter_b }}
+    </h3>
+
+
+    <p class="muted">
+
+        {{ fight.event.promotion }}
+        ·
+        {{ fight.event.name }}
+        ·
+        {{ fight.get_weight_class_display }}
+
+    </p>
+
+
+    <form method="post">
+
+        {% csrf_token %}
+
+
+        <h3>Your Pick</h3>
+
+        <p>
+            {{ form.predicted_winner.label_tag }}
+            <br>
+            {{ form.predicted_winner }}
+
+            {% if form.predicted_winner.errors %}
+                {{ form.predicted_winner.errors }}
+            {% endif %}
+        </p>
+
+
+        <p>
+            {{ form.method.label_tag }}
+            <br>
+            {{ form.method }}
+
+            {% if form.method.errors %}
+                {{ form.method.errors }}
+            {% endif %}
+        </p>
+
+
+        <p>
+            {{ form.confidence.label_tag }}
+            <br>
+            {{ form.confidence }}
+
+            {% if form.confidence.errors %}
+                {{ form.confidence.errors }}
+            {% endif %}
+        </p>
+
+
+        <h3>Research</h3>
+
+
+        <p>
+            {{ form.striking_notes.label_tag }}
+            <br>
+            {{ form.striking_notes }}
+        </p>
+
+
+        <p>
+            {{ form.grappling_notes.label_tag }}
+            <br>
+            {{ form.grappling_notes }}
+        </p>
+
+
+        <p>
+            {{ form.cardio_notes.label_tag }}
+            <br>
+            {{ form.cardio_notes }}
+        </p>
+
+
+        <p>
+            {{ form.durability_notes.label_tag }}
+            <br>
+            {{ form.durability_notes }}
+        </p>
+
+
+        <p>
+            {{ form.betting_notes.label_tag }}
+            <br>
+            {{ form.betting_notes }}
+        </p>
+
+
+        <h3>Final Reasoning</h3>
+
+        <p>
+            {{ form.final_reasoning }}
+        </p>
+
+
+        {% if form.non_field_errors %}
+            {{ form.non_field_errors }}
+        {% endif %}
+
+
+        <button
+            class="button"
+            type="submit"
+        >
+            {% if prediction %}
+                Update Prediction
+            {% else %}
+                Save Prediction
+            {% endif %}
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}

@@ -7,9 +7,10 @@ from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.contrib import messages
 
-from .models import Event, Fight, HistoricalPick, Prediction, Bet, BetSelection
-from .forms import BetForm, SingleBetSelectionForm
+from .models import Event, Fight, Result, HistoricalPick, Prediction, Bet, BetSelection
+from .forms import BetForm, SingleBetSelectionForm, UserPredictionForm
 
 @login_required
 def dashboard(request):
@@ -186,6 +187,7 @@ def event_detail(request, event_id):
             "fights",
             "fights__fighter_a",
             "fights__fighter_b",
+            "fights__result"
         ),
         id=event_id,
     )
@@ -208,6 +210,7 @@ def event_detail(request, event_id):
         fight_rows.append({
             "fight": fight,
             "prediction": user_predictions.get(fight.id),
+            "has_result": hasattr(fight, "result"),
         })
 
     return render(
@@ -745,5 +748,80 @@ def add_bet(request):
         {
             "bet_form": bet_form,
             "selection_form": selection_form,
+        },
+    )
+
+@login_required
+def manage_prediction(request, fight_id):
+    fight = get_object_or_404(
+        Fight.objects.select_related(
+            "event",
+            "fighter_a",
+            "fighter_b",
+        ),
+        id=fight_id,
+    )
+
+    prediction = Prediction.objects.filter(
+        user=request.user,
+        fight=fight,
+    ).first()
+
+    # Lock predictions once an official result exists.
+    try:
+        fight.result
+        result_exists = True
+    except Result.DoesNotExist:
+        result_exists = False
+
+    if result_exists:
+        messages.error(
+            request,
+            "Predictions are locked because this fight already has a result."
+        )
+
+        return redirect(
+            "predictions:event_detail",
+            event_id=fight.event_id,
+        )
+
+    if request.method == "POST":
+        form = UserPredictionForm(
+            request.POST,
+            instance=prediction,
+            fight=fight,
+        )
+
+        if form.is_valid():
+            prediction = form.save(commit=False)
+
+            prediction.user = request.user
+            prediction.fight = fight
+
+            prediction.save()
+
+            messages.success(
+                request,
+                "Your prediction has been saved."
+            )
+
+            return redirect(
+                "predictions:event_detail",
+                event_id=fight.event_id,
+            )
+
+    else:
+        form = UserPredictionForm(
+            instance=prediction,
+            fight=fight,
+        )
+
+    return render(
+        request,
+        "predictions/manage_prediction.html",
+        {
+            "fight": fight,
+            "prediction": prediction,
+            "form": form,
         },
     )

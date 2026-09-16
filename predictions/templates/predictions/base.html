@@ -149,6 +149,26 @@
         .negative {
             color: #dc2626;
         }
+        input,
+        select,
+        textarea {
+            width: 100%;
+            max-width: 650px;
+            box-sizing: border-box;
+            padding: 10px;
+            margin-top: 6px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        form label {
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -208,5 +228,16 @@
         {% block content %}
         {% endblock %}
     </main>
+    {% if messages %}
+
+        {% for message in messages %}
+
+            <div class="card">
+                {{ message }}
+            </div>
+
+        {% endfor %}
+
+    {% endif %}
 </body>
 </html>

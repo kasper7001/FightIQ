@@ -5,12 +5,36 @@ from . import views
 app_name = "predictions"
 
 urlpatterns = [
-    path("", views.dashboard, name="dashboard"),
-    path("events/", views.event_list, name="event_list"),
-    path("events/<int:event_id>/", views.event_detail, name="event_detail"),
-    path("analytics/", views.analytics_dashboard, name="analytics_dashboard"),
-    path("api/fights/<int:fight_id>/fighters/", views.fight_fighters_api, name="fight_fighters_api"),
-    path("register/", views.register, name="register"),
+    path(
+        "", 
+        views.dashboard, 
+        name="dashboard"
+    ),
+    path(
+        "events/", 
+        views.event_list, 
+        name="event_list"
+    ),
+    path(
+        "events/<int:event_id>/", 
+        views.event_detail, 
+        name="event_detail"
+    ),
+    path(
+        "analytics/", 
+         views.analytics_dashboard, 
+         name="analytics_dashboard"
+        ),
+    path(
+        "api/fights/<int:fight_id>/fighters/", 
+        views.fight_fighters_api, 
+        name="fight_fighters_api"
+    ),
+    path(
+        "register/", 
+        views.register, 
+        name="register"
+    ),
     path(
         "login/",
         auth_views.LoginView.as_view(
@@ -33,4 +57,9 @@ urlpatterns = [
         views.add_bet,
         name="add_bet",
     ),
+    path(
+        "fights/<int:fight_id>/prediction/",
+        views.manage_prediction,
+        name="manage_prediction",
+    )
 ]
