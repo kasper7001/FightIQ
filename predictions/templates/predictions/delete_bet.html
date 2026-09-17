@@ -1,0 +1,60 @@
+{% extends "predictions/base.html" %}
+
+{% block content %}
+
+<a href="{% url 'predictions:bet_list' %}">
+    &larr; Back to bets
+</a>
+
+<div class="card">
+
+    <h2>Delete Bet</h2>
+
+    <p>
+        Are you sure you want to delete this bet?
+    </p>
+
+    {% for selection in bet.selections.all %}
+
+        <p>
+            <strong>
+                {{ selection.selection }}
+            </strong>
+
+            <br>
+
+            {{ selection.fight }}
+
+            <br>
+
+            {{ selection.odds }} odds
+        </p>
+
+    {% endfor %}
+
+    <p>
+        <strong>
+            This cannot be undone.
+        </strong>
+    </p>
+
+    <form method="post">
+
+        {% csrf_token %}
+
+        <button type="submit">
+            Delete Bet
+        </button>
+
+        <a
+            class="button"
+            href="{% url 'predictions:bet_list' %}"
+        >
+            Cancel
+        </a>
+
+    </form>
+
+</div>
+
+{% endblock %}

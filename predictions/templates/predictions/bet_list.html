@@ -121,9 +121,28 @@
             {% if bet.profit_loss is None %}
                 Pending
             {% else %}
-                {{ bet.profit_loss }}u
+                {{ bet.profit_loss }}
             {% endif %}
         </p>
+
+        {% if bet.status == "PENDING" %}
+
+            <p>
+                <a
+                    class="button"
+                    href="{% url 'predictions:edit_bet' bet.id %}"
+                >
+                    Edit Bet
+                </a>
+
+                <a
+                    href="{% url 'predictions:delete_bet' bet.id %}"
+                >
+                    Delete
+                </a>
+            </p>
+
+        {% endif %}
 
         {% if bet.notes %}
             <p class="muted">

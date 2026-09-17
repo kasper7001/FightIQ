@@ -61,5 +61,16 @@ urlpatterns = [
         "fights/<int:fight_id>/prediction/",
         views.manage_prediction,
         name="manage_prediction",
-    )
+    ),
+    path(
+        "bets/<int:bet_id>/edit/",
+        views.edit_bet,
+        name="edit_bet",
+    ),
+
+    path(
+        "bets/<int:bet_id>/delete/",
+        views.delete_bet,
+        name="delete_bet",
+    ),
 ]

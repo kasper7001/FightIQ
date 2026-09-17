@@ -8,6 +8,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.contrib import messages
+from django.db import transaction
 
 from .models import Event, Fight, Result, HistoricalPick, Prediction, Bet, BetSelection
 from .forms import BetForm, SingleBetSelectionForm, UserPredictionForm
@@ -491,6 +492,41 @@ def build_event_summary(rows, reverse):
         reverse=reverse,
     )
 
+def populate_single_bet_selection(selection, cleaned_data):
+    fighter = cleaned_data.get("fighter")
+    method_pick = cleaned_data.get("method_pick")
+    distance_pick = cleaned_data.get("distance_pick")
+
+    if selection.market == "MONEYLINE":
+        selection.selected_fighter = fighter
+        selection.method_selection = ""
+        selection.distance_selection = ""
+        selection.selection = str(fighter)
+
+    elif selection.market == "METHOD":
+        selection.selected_fighter = fighter
+        selection.method_selection = method_pick
+        selection.distance_selection = ""
+
+        method_name = dict(
+            BetSelection.METHOD_SELECTION_CHOICES
+        ).get(method_pick, method_pick)
+
+        selection.selection = f"{fighter} by {method_name}"
+
+    elif selection.market == "DISTANCE":
+        selection.selected_fighter = None
+        selection.method_selection = ""
+        selection.distance_selection = distance_pick
+
+        distance_name = dict(
+            BetSelection.DISTANCE_SELECTION_CHOICES
+        ).get(distance_pick, distance_pick)
+
+        selection.selection = distance_name
+
+    return selection
+
 
 def build_monthly_summary(rows):
     grouped = {}
@@ -728,30 +764,10 @@ def add_bet(request):
             selection.bet = bet
             selection.outcome = "PENDING"
 
-            if selection.market == "MONEYLINE":
-                selection.selected_fighter = fighter
-                selection.selection = str(fighter)
-
-            elif selection.market == "METHOD":
-                selection.selected_fighter = fighter
-                selection.method_selection = method_pick
-
-                method_name = dict(
-                    BetSelection.METHOD_SELECTION_CHOICES
-                ).get(method_pick, method_pick)
-
-                selection.selection = (
-                    f"{fighter} by {method_name}"
-                )
-
-            elif selection.market == "DISTANCE":
-                selection.distance_selection = distance_pick
-
-                distance_name = dict(
-                    BetSelection.DISTANCE_SELECTION_CHOICES
-                ).get(distance_pick, distance_pick)
-
-                selection.selection = distance_name
+            selection = populate_single_bet_selection(
+                selection,
+                selection_form.cleaned_data,
+            )
 
             selection.save()
 
@@ -847,5 +863,120 @@ def manage_prediction(request, fight_id):
             "fight": fight,
             "prediction": prediction,
             "form": form,
+        },
+    )
+
+@login_required
+def edit_bet(request, bet_id):
+    bet = get_object_or_404(
+        Bet,
+        id=bet_id,
+        user=request.user,
+    )
+
+    if bet.bet_type != "SINGLE":
+        messages.error(
+            request,
+            "Only single bets can currently be edited here."
+        )
+        return redirect("predictions:bet_list")
+
+    if bet.status() != "PENDING":
+        messages.error(
+            request,
+            "Settled bets cannot be edited."
+        )
+        return redirect("predictions:bet_list")
+
+    selection = bet.selections.first()
+
+    if not selection:
+        messages.error(
+            request,
+            "This bet does not contain a selection."
+        )
+        return redirect("predictions:bet_list")
+
+    if request.method == "POST":
+        bet_form = BetForm(
+            request.POST,
+            instance=bet,
+        )
+
+        selection_form = SingleBetSelectionForm(
+            request.POST,
+            instance=selection,
+        )
+
+        if bet_form.is_valid() and selection_form.is_valid():
+            with transaction.atomic():
+                bet = bet_form.save()
+
+                selection = selection_form.save(commit=False)
+
+                selection.bet = bet
+                selection.outcome = "PENDING"
+
+                selection = populate_single_bet_selection(
+                    selection,
+                    selection_form.cleaned_data,
+                )
+
+                selection.save()
+
+            messages.success(
+                request,
+                "Your bet has been updated."
+            )
+
+            return redirect("predictions:bet_list")
+
+    else:
+        bet_form = BetForm(instance=bet)
+
+        selection_form = SingleBetSelectionForm(
+            instance=selection,
+        )
+
+    return render(
+        request,
+        "predictions/edit_bet.html",
+        {
+            "bet": bet,
+            "bet_form": bet_form,
+            "selection_form": selection_form,
+        },
+    )
+
+@login_required
+def delete_bet(request, bet_id):
+    bet = get_object_or_404(
+        Bet,
+        id=bet_id,
+        user=request.user,
+    )
+
+    if bet.status() != "PENDING":
+        messages.error(
+            request,
+            "Settled bets cannot be deleted."
+        )
+        return redirect("predictions:bet_list")
+
+    if request.method == "POST":
+        bet.delete()
+
+        messages.success(
+            request,
+            "Your bet has been deleted."
+        )
+
+        return redirect("predictions:bet_list")
+
+    return render(
+        request,
+        "predictions/delete_bet.html",
+        {
+            "bet": bet,
         },
     )

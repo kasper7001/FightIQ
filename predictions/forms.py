@@ -153,6 +153,9 @@ class SingleBetSelectionForm(forms.ModelForm):
         if self.data.get("fight"):
             fight_id = self.data.get("fight")
 
+        elif self.instance and self.instance.pk:
+            fight_id = self.instance.fight_id
+
         if fight_id:
             try:
                 fight = Fight.objects.get(pk=fight_id)
@@ -166,6 +169,17 @@ class SingleBetSelectionForm(forms.ModelForm):
 
             except (Fight.DoesNotExist, ValueError):
                 self.fields["fighter"].queryset = Fighter.objects.none()
+
+        else:
+            self.fields["fighter"].queryset = Fighter.objects.none()
+
+        # Populate our custom fields when editing an existing bet.
+        if self.instance and self.instance.pk:
+            if self.instance.selected_fighter_id:
+                self.fields["fighter"].initial = self.instance.selected_fighter_id
+
+            self.fields["method_pick"].initial = self.instance.method_selection
+            self.fields["distance_pick"].initial = self.instance.distance_selection
 
     def clean_odds(self):
         odds = self.cleaned_data["odds"]
