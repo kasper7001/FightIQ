@@ -1,4 +1,4 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
 from .models import BetSelection, Result
@@ -81,6 +81,21 @@ def settle_bets_from_result(sender, instance, **kwargs):
             ).update(
                 outcome=new_outcome
             )
+
+@receiver(post_delete, sender=Result)
+def reset_bets_when_result_deleted(sender, instance, **kwargs):
+    BetSelection.objects.filter(
+        fight=instance.fight,
+        market__in=[
+            "MONEYLINE",
+            "METHOD",
+            "DISTANCE",
+        ],
+    ).exclude(
+        outcome="PENDING"
+    ).update(
+        outcome="PENDING"
+    )
 
 
 @receiver(post_save, sender=BetSelection)
