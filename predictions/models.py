@@ -449,6 +449,17 @@ class BetSelection(models.Model):
         ("VOID", "Void"),
     ]
 
+    METHOD_SELECTION_CHOICES = [
+        ("KO_TKO", "KO/TKO"),
+        ("SUB", "Submission"),
+        ("DEC", "Decision"),
+    ]
+
+    DISTANCE_SELECTION_CHOICES = [
+        ("YES", "Goes the Distance"),
+        ("NO", "Does Not Go the Distance"),
+    ]
+
     bet = models.ForeignKey(
         Bet,
         on_delete=models.CASCADE,
@@ -468,6 +479,18 @@ class BetSelection(models.Model):
             blank=True,
             related_name="bet_selections",
         )
+
+    method_selection = models.CharField(
+        max_length=20,
+        choices=METHOD_SELECTION_CHOICES,
+        blank=True,
+    )
+
+    distance_selection = models.CharField(
+        max_length=10,
+        choices=DISTANCE_SELECTION_CHOICES,
+        blank=True,
+    )
 
     market = models.CharField(
         max_length=30,

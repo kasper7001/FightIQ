@@ -98,13 +98,42 @@ class BetForm(forms.ModelForm):
 class SingleBetSelectionForm(forms.ModelForm):
     fighter = forms.ModelChoiceField(
         queryset=Fighter.objects.none(),
-        label="Selection",
-        help_text="Select a fight first.",
+        required=False,
+        label="Fighter",
+    )
+
+    method_pick = forms.ChoiceField(
+        choices=[
+            ("", "---------"),
+            ("KO_TKO", "KO/TKO"),
+            ("SUB", "Submission"),
+            ("DEC", "Decision"),
+        ],
+        required=False,
+        label="Method",
+    )
+
+    distance_pick = forms.ChoiceField(
+        choices=[
+            ("", "---------"),
+            ("YES", "Goes the Distance"),
+            ("NO", "Does Not Go the Distance"),
+        ],
+        required=False,
+        label="Distance",
     )
 
     class Meta:
         model = BetSelection
-        fields = ["fight", "fighter", "odds"]
+
+        fields = [
+            "fight",
+            "market",
+            "fighter",
+            "method_pick",
+            "distance_pick",
+            "odds",
+        ]
 
         widgets = {
             "odds": forms.NumberInput(
@@ -152,9 +181,42 @@ class SingleBetSelectionForm(forms.ModelForm):
         cleaned_data = super().clean()
 
         fight = cleaned_data.get("fight")
+        market = cleaned_data.get("market")
         fighter = cleaned_data.get("fighter")
+        method_pick = cleaned_data.get("method_pick")
+        distance_pick = cleaned_data.get("distance_pick")
 
-        if fight and fighter:
+        if not fight:
+            return cleaned_data
+
+        if market == "MONEYLINE":
+            if not fighter:
+                self.add_error(
+                    "fighter",
+                    "Select the fighter you are backing."
+                )
+
+        elif market == "METHOD":
+            if not fighter:
+                self.add_error(
+                    "fighter",
+                    "Select the fighter you are backing."
+                )
+
+            if not method_pick:
+                self.add_error(
+                    "method_pick",
+                    "Select a method of victory."
+                )
+
+        elif market == "DISTANCE":
+            if not distance_pick:
+                self.add_error(
+                    "distance_pick",
+                    "Select whether the fight goes the distance."
+                )
+
+        if fighter:
             valid_ids = [
                 fight.fighter_a_id,
                 fight.fighter_b_id,
@@ -163,7 +225,7 @@ class SingleBetSelectionForm(forms.ModelForm):
             if fighter.id not in valid_ids:
                 self.add_error(
                     "fighter",
-                    "The selected fighter is not part of this fight.",
+                    "The selected fighter is not part of this fight."
                 )
 
         return cleaned_data

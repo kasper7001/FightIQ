@@ -1,6 +1,39 @@
 document.addEventListener("DOMContentLoaded", function () {
     const fightSelect = document.getElementById("id_fight");
     const fighterSelect = document.getElementById("id_fighter");
+    const marketSelect = document.getElementById("id_market");
+    const fighterField = document.getElementById("fighter-field");
+    const methodField = document.getElementById("method-field");
+    const distanceField = document.getElementById("distance-field");
+
+    function updateMarketFields() {
+        if (!marketSelect) {
+            return;
+        }
+
+        const market = marketSelect.value;
+
+        fighterField.style.display = "none";
+        methodField.style.display = "none";
+        distanceField.style.display = "none";
+
+        if (market === "MONEYLINE") {
+            fighterField.style.display = "block";
+        }
+
+        if (market === "METHOD") {
+            fighterField.style.display = "block";
+            methodField.style.display = "block";
+        }
+
+        if (market === "DISTANCE") {
+            distanceField.style.display = "block";
+        }
+    }
+
+    marketSelect.addEventListener("change", updateMarketFields);
+
+    updateMarketFields();
 
     if (!fightSelect || !fighterSelect) {
         return;

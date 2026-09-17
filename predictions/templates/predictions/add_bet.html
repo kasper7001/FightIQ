@@ -25,7 +25,45 @@
 
         <h3>Selection</h3>
 
-        {{ selection_form.as_p }}
+        <p>
+            {{ selection_form.fight.label_tag }}
+            {{ selection_form.fight }}
+        </p>
+
+        <p>
+            {{ selection_form.market.label_tag }}
+            {{ selection_form.market }}
+        </p>
+
+        <div id="fighter-field">
+            <p>
+                {{ selection_form.fighter.label_tag }}
+                {{ selection_form.fighter }}
+                {{ selection_form.fighter.errors }}
+            </p>
+        </div>
+
+        <div id="method-field">
+            <p>
+                {{ selection_form.method_pick.label_tag }}
+                {{ selection_form.method_pick }}
+                {{ selection_form.method_pick.errors }}
+            </p>
+        </div>
+
+        <div id="distance-field">
+            <p>
+                {{ selection_form.distance_pick.label_tag }}
+                {{ selection_form.distance_pick }}
+                {{ selection_form.distance_pick.errors }}
+            </p>
+        </div>
+
+        <p>
+            {{ selection_form.odds.label_tag }}
+            {{ selection_form.odds }}
+            {{ selection_form.odds.errors }}
+        </p>
 
         <button
             class="button"

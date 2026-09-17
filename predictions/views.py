@@ -721,13 +721,37 @@ def add_bet(request):
 
             selection = selection_form.save(commit=False)
 
-            fighter = selection_form.cleaned_data["fighter"]
+            fighter = selection_form.cleaned_data.get("fighter")
+            method_pick = selection_form.cleaned_data.get("method_pick")
+            distance_pick = selection_form.cleaned_data.get("distance_pick")
 
             selection.bet = bet
-            selection.market = "MONEYLINE"
-            selection.selected_fighter = fighter
-            selection.selection = str(fighter)
             selection.outcome = "PENDING"
+
+            if selection.market == "MONEYLINE":
+                selection.selected_fighter = fighter
+                selection.selection = str(fighter)
+
+            elif selection.market == "METHOD":
+                selection.selected_fighter = fighter
+                selection.method_selection = method_pick
+
+                method_name = dict(
+                    BetSelection.METHOD_SELECTION_CHOICES
+                ).get(method_pick, method_pick)
+
+                selection.selection = (
+                    f"{fighter} by {method_name}"
+                )
+
+            elif selection.market == "DISTANCE":
+                selection.distance_selection = distance_pick
+
+                distance_name = dict(
+                    BetSelection.DISTANCE_SELECTION_CHOICES
+                ).get(distance_pick, distance_pick)
+
+                selection.selection = distance_name
 
             selection.save()
 
